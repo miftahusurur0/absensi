@@ -17,6 +17,8 @@
     
     <!-- QR Code Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
     
     <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -246,10 +248,10 @@
             <div class="brand"><i class="fas fa-qrcode"></i> Absensi <span class="version-badge" id="version-display">v7.3</span></div>
             <div class="nav-buttons">
                 <button class="btn btn-primary" onclick="navigateTo('scanner')"><i class="fas fa-camera"></i> <span>Scan</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('history')"><i class="fas fa-history"></i> <span>Riwayat</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('volunteers')"><i class="fas fa-users"></i> <span>Relawan</span></button>
-                <button class="btn btn-outline" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
-                <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
+                <button class="btn btn-outline" onclick="navigateTo('history').catch(console.error)"><i class="fas fa-history"></i> <span>Riwayat</span></button>
+                <button class="btn btn-outline" onclick="navigateTo('volunteers').catch(console.error)"><i class="fas fa-users"></i> <span>Relawan</span></button>
+                <button class="btn btn-outline" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards').catch(console.error)"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
+                <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database').catch(console.error)"><i class="fas fa-database"></i> <span>DB</span></button>
                 <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
@@ -525,6 +527,16 @@
             }
             return data || [];
         }
+        async function saveHistory(data) {
+            if (!Array.isArray(data)) return;
+            try {
+                // delete existing rows (simple approach)
+                const { error: deleteError } = await supabase.from('history').delete().neq('id', '');
+                if (deleteError) console.error('Error deleting history:', deleteError);
+                const { error: insertError } = await supabase.from('history').insert(data);
+                if (insertError) console.error('Error saving history:', insertError);
+            } catch (e) { console.error('saveHistory error', e); }
+        }
         async function addToHistory(record) {
             const { error } = await supabase.from('history').insert([record]);
             if (error) console.error('Error adding history:', error);
@@ -565,9 +577,9 @@
             document.getElementById('vol-random-part').value = newRandom;
             updateIdPreview();
         }
-        function isLockerTaken(lockerNum, excludeIndex = -1) {
+        async function isLockerTaken(lockerNum, excludeIndex = -1) {
             if (!lockerNum) return false;
-            const vols = getVolunteers();
+            const vols = await getVolunteers();
             return vols.some((v, i) => v.locker === lockerNum.toString() && i !== excludeIndex);
         }
 
@@ -588,11 +600,11 @@
         }
 
         // --- Auth ---
-        function checkAuth() {
+        async function checkAuth() {
             if (localStorage.getItem(SESSION_KEY) === 'active') {
                 document.getElementById('login-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
-                initApp();
+                await initApp();
             } else {
                 document.getElementById('login-page').classList.remove('hidden');
                 document.getElementById('main-app').classList.add('hidden');
@@ -619,17 +631,17 @@
         }
 
         // --- Navigation ---
-        function navigateTo(view) {
+        async function navigateTo(view) {
             document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
             
             if (view === 'scanner') startScanner();
             else stopScanner();
 
-            if (view === 'history') renderHistory();
-            if (view === 'volunteers') renderVolunteers();
-            if (view === 'cards') renderCards();
-            if (view === 'database') renderDatabaseHistory();
+            if (view === 'history') await renderHistory();
+            if (view === 'volunteers') await renderVolunteers();
+            if (view === 'cards') await renderCards();
+            if (view === 'database') await renderDatabaseHistory();
         }
 
         // --- Scanner Logic ---
@@ -732,7 +744,8 @@
 
         // --- QR Popup Logic ---
         async function showQr(id) {
-            const v = getVolunteers().find(x => x.id === id);
+            const vols = await getVolunteers();
+            const v = vols.find(x => x.id === id);
             if(!v) return;
             const qrDataUrl = await generateQRImage(v.id);
             const qrImg = document.getElementById('qr-display-img');
@@ -781,7 +794,7 @@
             });
         }
 
-        function openVolunteerModal(index = null) {
+        async function openVolunteerModal(index = null) {
             const modal = document.getElementById('volunteer-modal');
             const form = document.getElementById('volunteer-form');
             form.reset();
@@ -791,7 +804,8 @@
             document.getElementById('vol-role').addEventListener('input', updateIdPreview);
 
             if (index !== null) {
-                const v = getVolunteers()[index];
+                const vols = await getVolunteers();
+                const v = vols[index];
                 document.getElementById('vol-index').value = index;
                 document.getElementById('vol-name').value = v.name;
                 document.getElementById('vol-role').value = v.role;
@@ -827,8 +841,7 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
-
-        document.getElementById('volunteer-form').addEventListener('submit', e => {
+        document.getElementById('volunteer-form').addEventListener('submit', async e => {
             e.preventDefault();
             const index = parseInt(document.getElementById('vol-index').value);
             const id = document.getElementById('vol-id').value;
@@ -837,12 +850,12 @@
             const locker = document.getElementById('vol-locker').value;
             const photo = document.getElementById('vol-photo-base64').value;
 
-            if (locker && isLockerTaken(locker, index)) {
+            if (locker && await isLockerTaken(locker, index)) {
                 showToast(`Nomor Loker ${locker} sudah digunakan!`, 'error');
                 return;
             }
 
-            let volunteers = getVolunteers();
+            let volunteers = await getVolunteers();
 
             if (index === -1) {
                 if (volunteers.some(v => v.id === id)) { showToast('ID Sistem error', 'error'); return; }
@@ -852,22 +865,26 @@
                 volunteers[index] = { id, name, role, locker: locker || '', photo };
                 showToast('Data relawan diperbarui', 'success');
             }
-            saveVolunteers(volunteers);
+            await saveVolunteers(volunteers);
             closeVolunteerModal();
-            renderVolunteers();
+            await renderVolunteers();
         });
 
         function editVolunteer(i) { openVolunteerModal(i); }
-        function deleteVolunteer(i) {
+        async function deleteVolunteer(i) {
             if(confirm('Hapus data ini?')) {
-                let v = getVolunteers(); v.splice(i, 1); saveVolunteers(v); renderVolunteers(); showToast('Dihapus', 'success');
+                let v = await getVolunteers();
+                v.splice(i, 1);
+                await saveVolunteers(v);
+                await renderVolunteers();
+                showToast('Dihapus', 'success');
             }
         }
 
         // --- HISTORY ---
-        function renderHistory() {
+        async function renderHistory() {
             const list = document.getElementById('history-list');
-            const data = getHistory();
+            const data = await getHistory();
             list.innerHTML = data.length ? '' : '<tr><td colspan="5" style="text-align:center; padding:2rem;">Kosong</td></tr>';
             data.forEach(h => {
                 const d = new Date(h.timestamp);
@@ -885,8 +902,10 @@
         }
 
         // --- DATABASE ---
-        function downloadFullData() {
-            const data = { version: APP_VERSION, timestamp: new Date().toISOString(), volunteers: getVolunteers(), history: getHistory() };
+        async function downloadFullData() {
+            const volunteers = await getVolunteers();
+            const history = await getHistory();
+            const data = { version: APP_VERSION, timestamp: new Date().toISOString(), volunteers, history };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
             const a = document.createElement('a');
             a.setAttribute("href", dataStr);
@@ -901,14 +920,14 @@
             if (!f) return;
             if(!confirm("Data akan ditimpa. Lanjutkan?")) { input.value = ''; return; }
             const r = new FileReader();
-            r.onload = function(e) {
+            r.onload = async function(e) {
                 try {
                     const json = JSON.parse(e.target.result);
                     if (json.volunteers && json.history) {
-                        saveVolunteers(json.volunteers);
-                        localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(json.history));
+                        await saveVolunteers(json.volunteers);
+                        await saveHistory(json.history);
                         showToast('Database direstore!', 'success');
-                        renderDatabaseHistory();
+                        await renderDatabaseHistory();
                     } else {
                         showToast('Format file tidak valid!', 'error');
                     }
@@ -917,9 +936,9 @@
             };
             r.readAsText(f);
         }
-        function renderDatabaseHistory() {
+        async function renderDatabaseHistory() {
             const list = document.getElementById('database-history-list');
-            const data = getHistory();
+            const data = await getHistory();
             data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             list.innerHTML = data.length ? '' : '<tr><td colspan="5" style="text-align:center; padding:2rem;">Belum ada riwayat.</td></tr>';
             data.forEach(h => {
@@ -937,8 +956,9 @@
                 list.appendChild(tr);
             });
         }
-        function exportHistoryToExcel() {
-            const data = getHistory().map(h => ({ 
+        async function exportHistoryToExcel() {
+            const raw = await getHistory();
+            const data = raw.map(h => ({ 
                 Waktu: new Date(h.timestamp).toLocaleString(), 
                 ID: h.volunteerId, 
                 Nama: h.name, 
@@ -952,8 +972,9 @@
         }
 
         // --- EXCEL IMPORT/EXPORT VOLUNTEERS ---
-        function exportVolunteersToExcel() {
-            const data = getVolunteers().map(v => ({ ID: v.id, Nama: v.name, Jabatan: v.role, Loker: v.locker }));
+        async function exportVolunteersToExcel() {
+            const vols = await getVolunteers();
+            const data = vols.map(v => ({ ID: v.id, Nama: v.name, Jabatan: v.role, Loker: v.locker }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Relawan");
             XLSX.writeFile(wb, "Data_Relawan.xlsx");
@@ -967,12 +988,12 @@
         function importVolunteersFromExcel(input) {
             const f = input.files[0]; if(!f) return;
             const r = new FileReader();
-            r.onload = e => {
+            r.onload = async e => {
                 const wb = XLSX.read(e.target.result, {type:'array'});
                 const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                let v = getVolunteers();
+                let v = await getVolunteers();
                 let count = 0;
-                json.forEach(row => {
+                for(const row of json) {
                     const name = row['Nama'];
                     const role = row['Jabatan'];
                     const locker = row['Loker'] ? row['Loker'].toString() : '';
@@ -980,13 +1001,13 @@
                         const rPart = generateRandomPart();
                         const lPart = generateLockerPart(locker);
                         const id = `${generateRolePart(role)}${rPart}${lPart}`;
-                        if (!locker || !isLockerTaken(locker)) {
+                        if (!locker || !(await isLockerTaken(locker))) {
                             v.push({ id, name, role, locker, photo: "" });
                             count++;
                         }
                     }
-                });
-                saveVolunteers(v); renderVolunteers(); showToast(`${count} data diimport`, 'success'); input.value='';
+                }
+                await saveVolunteers(v); await renderVolunteers(); showToast(`${count} data diimport`, 'success'); input.value='';
             };
             r.readAsArrayBuffer(f);
         }
@@ -1101,10 +1122,10 @@
             return canvas.toDataURL('image/png');
         }
 
-        function renderCards() {
+        async function renderCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = '<p style="text-align:center; width:100%;">Memuat kartu...</p>';
-            const volunteers = getVolunteers();
+            const volunteers = await getVolunteers();
             container.innerHTML = '';
 
             volunteers.forEach(async v => {
@@ -1123,8 +1144,13 @@
         }
 
         // --- Init ---
-        function initApp() {
-            renderVolunteers();
+        async function initApp() {
+            try {
+                await renderVolunteers();
+            } catch (e) {
+                console.error('Error in initApp:', e);
+                showToast('Gagal memuat data', 'error');
+            }
             navigateTo('scanner');
         }
         function showToast(msg, type) {

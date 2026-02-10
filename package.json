@@ -1,0 +1,17 @@
+{
+  "name": "absensi-relawan",
+  "version": "7.3.0",
+  "description": "Aplikasi absensi relawan dengan QR code dan Supabase",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "keywords": ["absensi", "qr-code", "supabase", "relawan"],
+  "author": "",
+  "license": "ISC"
+}
