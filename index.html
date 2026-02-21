@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Absensi Relawan v7.3</title>
+    <title>Absensi Relawan v7.4</title>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#2563eb">
@@ -17,8 +17,6 @@
     
     <!-- QR Code Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
     
     <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -26,8 +24,11 @@
     <!-- SheetJS (Excel) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
 
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Image Download Library -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -65,12 +66,17 @@
         .form-control[readonly] { background-color: #f9fafb; cursor: not-allowed; }
 
         /* Main App */
-        header { background: var(--white); padding: 1rem; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; z-index: 100; position: sticky; top: 0; }
-        .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-        .version-badge { background: #e0e7ff; color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; }
+        header { background: var(--white); padding: 1rem; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; z-index: 100; position: sticky; top: 0; flex-wrap: wrap; gap: 10px; min-height: auto; }
+        .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; }
+        .version-badge { background: #e0e7ff; color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
         
-        .nav-buttons { display: flex; gap: 8px; overflow-x: auto; max-width: 60%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .nav-buttons { display: flex; gap: 8px; overflow-x: auto; flex-wrap: wrap; flex: 1; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; justify-content: flex-end; align-items: center; }
         .nav-buttons::-webkit-scrollbar { display: none; }
+        
+        /* Responsive button styling */
+        .nav-buttons .btn span { display: inline; }
+        .nav-buttons .btn { padding: 10px 16px; font-size: 0.85rem; }
+        .nav-buttons .btn-danger { padding: 10px 12px; min-width: auto; }
         
         main { flex: 1; padding: 1rem; overflow-y: auto; max-width: 1200px; margin: 0 auto; width: 100%; -webkit-overflow-scrolling: touch; }
 
@@ -108,14 +114,78 @@
         .modal-content { background: var(--white); padding: 2rem; border-radius: 20px; width: 90%; max-width: 420px; text-align: center; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+        /* --- NEW: Animated Scan Success Popup --- */
+        #scan-success-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000; /* Di atas scanner */
+            display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .scan-success-card {
+            background: white;
+            width: 90%; max-width: 360px;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);
+            animation: slideUpFade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        @keyframes slideUpFade {
+            from { transform: translateY(50px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .scan-status-circle {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 1rem auto;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2.5rem;
+            color: white;
+            animation: popCircle 0.6s ease;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+        }
+
+        @keyframes popCircle {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Status Styles for Popup */
+        .scan-success-card.masuk .scan-status-circle { background: var(--success); }
+        .scan-success-card.pulang .scan-status-circle { background: var(--danger); }
+        .scan-success-card.masuk { border-top: 5px solid var(--success); }
+        .scan-success-card.pulang { border-top: 5px solid var(--danger); }
+
+        .scan-avatar-large {
+            width: 100px; height: 100px; border-radius: 50%;
+            object-fit: cover; margin: 0 auto 1rem auto;
+            border: 3px solid #e5e7eb;
+        }
+        
+        .scan-initials-large {
+            width: 100px; height: 100px; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; font-weight: 800;
+            margin: 0 auto 1rem auto;
+            border: 3px solid #e5e7eb;
+        }
+
         /* QR Display Modal */
         #qr-display-img { width: 220px; height: 220px; margin: 1rem 0; border: 1px solid #ddd; padding: 10px; border-radius: 10px; }
 
         /* Print Modal */
         .print-card-preview { max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
 
-        /* Toast */
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1f2937; color: #ffffff; padding: 14px 28px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; opacity: 0; transition: 0.3s; width: 90%; max-width: 500px; text-align: center; font-size: 0.95rem; font-weight: 500; }
+        /* Toast (Old style, keeping as fallback or small errors) */
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1f2937; color: #ffffff; padding: 14px 28px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; opacity: 0; transition: 0.3s; width: 90%; max-width: 400px; text-align: center; font-size: 0.9rem; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         .toast.success { background: var(--success); }
         .toast.error { background: var(--danger); }
@@ -124,99 +194,31 @@
         /* Toolbar */
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 
-        /* Scan Result Modal */
-        .scan-result-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.5s ease;
-        }
-        .scan-result-modal.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        .scan-result-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            padding: 2rem;
-            text-align: center;
-            color: white;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            animation: scanResultPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            max-width: 400px;
-            width: 90%;
-        }
-        @keyframes scanResultPop {
-            0% { transform: scale(0.3); opacity: 0; }
-            50% { transform: scale(1.05); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        #scan-result-avatar-container {
-            margin-bottom: 1rem;
-        }
-        #scan-result-avatar-container img,
-        #scan-result-avatar-container .initials-badge {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 4px solid white;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-        }
-        #scan-result-name {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        #scan-result-role {
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
-            opacity: 0.9;
-        }
-        #scan-result-time {
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            opacity: 0.9;
-        }
-        .scan-result-status {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            animation: statusPulse 2s infinite;
-        }
-        .scan-result-status.masuk {
-            background: linear-gradient(45deg, #22c55e, #16a34a);
-        }
-        .scan-result-status.pulang {
-            background: linear-gradient(45deg, #f59e0b, #d97706);
-        }
-        @keyframes statusPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        @media (max-width: 600px) {
-            .nav-buttons span { display: none; }
-            .btn { width: 100%; justify-content: center; margin-bottom: 8px; }
+        /* Tablet breakpoint */
+        @media (max-width: 768px) {
+            header { padding: 0.75rem; flex-wrap: nowrap; }
+            .brand { font-size: 1rem; gap: 6px; }
+            .version-badge { font-size: 0.6rem; padding: 1px 6px; }
+            
+            .nav-buttons { gap: 6px; }
+            .nav-buttons .btn { padding: 8px 10px; font-size: 0.75rem; }
+            .nav-buttons .btn span { display: none; }
+            .nav-buttons .btn-danger { padding: 8px 8px; }
+            
             .toolbar, .db-controls { flex-direction: column; align-items: stretch; }
             .modal-content { width: 95%; padding: 1.5rem; }
-            .scan-result-content { padding: 1.5rem; }
-            #scan-result-name { font-size: 1.5rem; }
+        }
+        
+        /* Mobile breakpoint */
+        @media (max-width: 480px) {
+            header { padding: 0.5rem; gap: 6px; }
+            .brand { font-size: 0.9rem; gap: 4px; }
+            .version-badge { font-size: 0.55rem; padding: 1px 4px; }
+            
+            .nav-buttons { gap: 4px; }
+            .nav-buttons .btn { padding: 6px 8px; font-size: 0.7rem; }
+            .nav-buttons .btn i { font-size: 0.9rem; }
+            .nav-buttons .btn-danger { padding: 6px 6px; }
         }
     </style>
 </head>
@@ -231,27 +233,28 @@
             <form id="login-form">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" id="username" class="form-control" placeholder="Username" required>
+                    <input type="text" id="username" class="form-control" placeholder="admin" required>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" class="form-control" placeholder="Password" required>
+                    <input type="password" id="password" class="form-control" placeholder="admin" required>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Masuk</button>
             </form>
+            <p style="margin-top: 20px; font-size: 0.8rem; color: #9ca3af;">Default: admin / admin</p>
         </div>
     </div>
 
     <!-- Main App -->
     <div id="main-app" class="hidden">
         <header>
-            <div class="brand"><i class="fas fa-qrcode"></i> Absensi <span class="version-badge" id="version-display">v7.3</span></div>
+            <div class="brand"><i class="fas fa-qrcode"></i> Absensi <span class="version-badge" id="version-display">v7.4</span></div>
             <div class="nav-buttons">
                 <button class="btn btn-primary" onclick="navigateTo('scanner')"><i class="fas fa-camera"></i> <span>Scan</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('history').catch(console.error)"><i class="fas fa-history"></i> <span>Riwayat</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('volunteers').catch(console.error)"><i class="fas fa-users"></i> <span>Relawan</span></button>
-                <button class="btn btn-outline" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards').catch(console.error)"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
-                <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database').catch(console.error)"><i class="fas fa-database"></i> <span>DB</span></button>
+                <button class="btn btn-outline" onclick="navigateTo('history')"><i class="fas fa-history"></i> <span>Riwayat</span></button>
+                <button class="btn btn-outline" onclick="navigateTo('volunteers')"><i class="fas fa-users"></i> <span>Relawan</span></button>
+                <button class="btn btn-outline" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
+                <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
                 <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
@@ -261,7 +264,7 @@
             <section id="view-scanner" class="scanner-container">
                 <h2 style="margin-bottom: 0.5rem;">Scan QR Code</h2>
                 <div id="reader"></div>
-                <p style="margin-top: 15px; color: #6b7280; font-size: 0.9rem;">Scan langsung untuk absen otomatis (Masuk/Pulang).</p>
+                <p style="margin-top: 15px; color: #6b7280; font-size: 0.9rem;">Arahkan kamera ke QR Code.</p>
             </section>
 
             <!-- View: History -->
@@ -324,7 +327,10 @@
             <section id="view-cards" class="hidden">
                 <div class="toolbar">
                     <h2>Kartu ID Relawan</h2>
-                    <button class="btn btn-primary" onclick="renderCards()"><i class="fas fa-sync"></i> Refresh</button>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="renderCards()"><i class="fas fa-sync"></i> Refresh</button>
+                        <button class="btn btn-success" onclick="downloadBulkCardsPDF()" title="Download semua kartu dalam format A4"><i class="fas fa-file-pdf"></i> Cetak Semua PDF</button>
+                    </div>
                 </div>
                 <div id="cards-container" class="cards-grid">
                     <!-- Cards generated by JS -->
@@ -369,6 +375,32 @@
         </main>
     </div>
 
+    <!-- NEW: Animated Scan Success Popup -->
+    <div id="scan-success-overlay" class="hidden">
+        <div id="scan-card" class="scan-success-card">
+            <div id="scan-status-icon" class="scan-status-circle">
+                <!-- Icon set by JS -->
+            </div>
+            
+            <div id="scan-photo-container">
+                <img id="scan-img-large" class="scan-avatar-large hidden">
+                <div id="scan-initials-large" class="scan-initials-large hidden"></div>
+            </div>
+
+            <h2 id="scan-name-display" style="font-size:1.4rem; margin-bottom:5px; color:var(--dark);">Nama Relawan</h2>
+            <p id="scan-role-display" style="color:#6b7280; font-weight:600;">Jabatan</p>
+            
+            <div style="background:#f3f4f6; padding:10px; border-radius:8px; margin: 15px 0;">
+                <p style="font-size:0.9rem; color:#666;">ID: <span id="scan-id-display" style="font-weight:bold;">-</span></p>
+                <p style="font-size:0.9rem; color:#666;">Waktu: <span id="scan-time-display" style="font-weight:bold;">-</span></p>
+            </div>
+
+            <div id="scan-status-badge" style="padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; letter-spacing: 1px; display:inline-block;">
+                STATUS
+            </div>
+        </div>
+    </div>
+
     <!-- Modal QR Display -->
     <div id="qr-modal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -388,13 +420,14 @@
     <div id="print-modal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 600px;">
             <h3 style="margin-bottom:10px;">Pratinjau Cetak</h3>
-            <p id="print-card-name" style="font-weight:600; color:var(--primary);"></p>
+            <p id="print-card-name" style="font-weight:600; color:var(--primary); margin-bottom:15px;"></p>
             <div style="margin: 20px 0; display:flex; justify-content:center;">
                 <img id="print-card-img" src="" class="print-card-preview" alt="Kartu">
             </div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('print-modal').classList.add('hidden')">Tutup</button>
-                <button id="download-card-btn" class="btn btn-primary" style="flex:1"><i class="fas fa-download"></i> Download</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-outline" style="flex:1; min-width:120px" onclick="document.getElementById('print-modal').classList.add('hidden')">Tutup</button>
+                <button id="download-card-img-btn" class="btn btn-primary" style="flex:1; min-width:120px"><i class="fas fa-image"></i> Download Gambar</button>
+                <button id="download-card-pdf-btn" class="btn btn-success" style="flex:1; min-width:120px"><i class="fas fa-file-pdf"></i> Download PDF</button>
             </div>
         </div>
     </div>
@@ -405,8 +438,8 @@
             <h3 id="modal-title" style="margin-bottom: 1.5rem; text-align: center; font-size:1.3rem;">Tambah Relawan</h3>
             <form id="volunteer-form">
                 <input type="hidden" id="vol-index">
-                <input type="hidden" id="vol-random-part">
-
+                <input type="hidden" id="vol-random-part"> 
+                
                 <div class="form-group">
                     <label>Foto Profil</label>
                     <input type="file" id="vol-photo-file" class="form-control" accept="image/*" onchange="previewImage(this)">
@@ -445,33 +478,15 @@
         </div>
     </div>
 
-    <!-- Modal Scan Result -->
-    <div id="scan-result-modal" class="scan-result-modal">
-        <div class="scan-result-content">
-            <div id="scan-result-avatar-container">
-                <!-- Avatar or initials will be inserted here -->
-            </div>
-            <h2 id="scan-result-name">Nama Relawan</h2>
-            <p id="scan-result-role">Jabatan</p>
-            <p id="scan-result-time">Waktu: --:--</p>
-            <div id="scan-result-status" class="scan-result-status">Status</div>
-        </div>
-    </div>
-
     <div id="toast" class="toast">Pesan notifikasi</div>
 
     <script>
         // --- Config & State ---
-        const APP_VERSION = "7.3";
-        const DB_KEY_VOLUNTEERS = 'absensi_volunteers_v73';
-        const DB_KEY_HISTORY = 'absensi_history_v73';
+        const APP_VERSION = "7.4";
+        const DB_KEY_VOLUNTEERS = 'absensi_volunteers_v74';
+        const DB_KEY_HISTORY = 'absensi_history_v74';
         const SESSION_KEY = 'absensi_admin_session';
-
-        // Supabase Config
-        const SUPABASE_URL = 'https://mbqizqdgcxmzpumddhlp.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_NwzrWw4KIwo29_Niv_fGHg_0XIqDSv8';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        
         let html5QrcodeScanner = null;
         let isScanning = false;
 
@@ -504,42 +519,13 @@
         })();
 
         // --- Data Logic ---
-        async function getVolunteers() {
-            const { data, error } = await supabase.from('volunteers').select('*');
-            if (error) {
-                console.error('Error fetching volunteers:', error);
-                return [];
-            }
-            return data || [];
-        }
-        async function saveVolunteers(data) {
-            // For simplicity, delete all and insert new (in real app, use upsert or proper sync)
-            const { error: deleteError } = await supabase.from('volunteers').delete().neq('id', ''); // Delete all
-            if (deleteError) console.error('Error deleting volunteers:', deleteError);
-            const { error: insertError } = await supabase.from('volunteers').insert(data);
-            if (insertError) console.error('Error saving volunteers:', insertError);
-        }
-        async function getHistory() {
-            const { data, error } = await supabase.from('history').select('*').order('timestamp', { ascending: false });
-            if (error) {
-                console.error('Error fetching history:', error);
-                return [];
-            }
-            return data || [];
-        }
-        async function saveHistory(data) {
-            if (!Array.isArray(data)) return;
-            try {
-                // delete existing rows (simple approach)
-                const { error: deleteError } = await supabase.from('history').delete().neq('id', '');
-                if (deleteError) console.error('Error deleting history:', deleteError);
-                const { error: insertError } = await supabase.from('history').insert(data);
-                if (insertError) console.error('Error saving history:', insertError);
-            } catch (e) { console.error('saveHistory error', e); }
-        }
-        async function addToHistory(record) {
-            const { error } = await supabase.from('history').insert([record]);
-            if (error) console.error('Error adding history:', error);
+        function getVolunteers() { return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]'); }
+        function saveVolunteers(data) { localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(data)); }
+        function getHistory() { return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]'); }
+        function addToHistory(record) {
+            const history = getHistory();
+            history.unshift(record);
+            localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(history));
         }
 
         function getInitials(name) {
@@ -577,34 +563,28 @@
             document.getElementById('vol-random-part').value = newRandom;
             updateIdPreview();
         }
-        async function isLockerTaken(lockerNum, excludeIndex = -1) {
+        function isLockerTaken(lockerNum, excludeIndex = -1) {
             if (!lockerNum) return false;
-            const vols = await getVolunteers();
+            const vols = getVolunteers();
             return vols.some((v, i) => v.locker === lockerNum.toString() && i !== excludeIndex);
         }
 
         // --- Logic: Auto Determine Next Status ---
-        async function determineNextStatus(userId) {
-            const history = await getHistory();
+        function determineNextStatus(userId) {
+            const history = getHistory();
             const userHistory = history.filter(h => h.volunteerId === userId);
-
-            // Jika belum ada riwayat, otomatis Masuk
             if (userHistory.length === 0) return 'Masuk';
-
-            // Cek status terakhir
             const lastStatus = userHistory[0].status;
-
-            // Toggle logic: Masuk -> Pulang, Pulang -> Masuk
             if (lastStatus === 'Masuk') return 'Pulang';
             return 'Masuk';
         }
 
         // --- Auth ---
-        async function checkAuth() {
+        function checkAuth() {
             if (localStorage.getItem(SESSION_KEY) === 'active') {
                 document.getElementById('login-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
-                await initApp();
+                initApp();
             } else {
                 document.getElementById('login-page').classList.remove('hidden');
                 document.getElementById('main-app').classList.add('hidden');
@@ -631,17 +611,17 @@
         }
 
         // --- Navigation ---
-        async function navigateTo(view) {
+        function navigateTo(view) {
             document.querySelectorAll('main section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
             
             if (view === 'scanner') startScanner();
             else stopScanner();
 
-            if (view === 'history') await renderHistory();
-            if (view === 'volunteers') await renderVolunteers();
-            if (view === 'cards') await renderCards();
-            if (view === 'database') await renderDatabaseHistory();
+            if (view === 'history') renderHistory();
+            if (view === 'volunteers') renderVolunteers();
+            if (view === 'cards') renderCards();
+            if (view === 'database') renderDatabaseHistory();
         }
 
         // --- Scanner Logic ---
@@ -662,14 +642,13 @@
         
         const COOLDOWN_MS = 5 * 60 * 1000; 
 
-        // UPDATED: On Scan Success (Auto Save)
-        async function onScanSuccess(text) {
-            const volunteers = await getVolunteers();
-            const v = volunteers.find(x => x.id === text);
+        // UPDATED: On Scan Success (With Animated Popup)
+        function onScanSuccess(text) {
+            const v = getVolunteers().find(x => x.id === text);
             if (v) {
                 // 1. Determine Auto Status
-                const nextStatus = await determineNextStatus(v.id);
-
+                const nextStatus = determineNextStatus(v.id);
+                
                 // 2. Check Cooldown
                 const now = new Date();
                 const nowTime = now.getTime();
@@ -679,39 +658,92 @@
                 if (lastScanStr) {
                     const lastScanTime = parseInt(lastScanStr);
                     const diff = nowTime - lastScanTime;
-
+                    
                     if (diff < COOLDOWN_MS) {
                         const remainingMinutes = Math.ceil((COOLDOWN_MS - diff) / 60000);
                         showToast(`Cooldown: Tunggu ${remainingMinutes} menit`, 'error');
-                        return;
+                        return; 
                     }
                 }
 
-                // 3. AUTO SAVE
+                // 3. Auto Save
                 localStorage.setItem(lastScanKey, nowTime.toString());
-                await addToHistory({
-                    timestamp: now.toISOString(),
-                    volunteerId: v.id,
-                    name: v.name,
-                    role: v.role,
-                    locker: v.locker,
-                    photo: v.photo,
-                    status: nextStatus
+                addToHistory({ 
+                    timestamp: now.toISOString(), 
+                    volunteerId: v.id, 
+                    name: v.name, 
+                    role: v.role, 
+                    locker: v.locker, 
+                    photo: v.photo, 
+                    status: nextStatus 
                 });
 
-                // 4. Feedback (Toast)
-                const type = nextStatus === 'Masuk' ? 'success' : 'warning';
-                showToast(`Absen ${nextStatus}: ${v.name}`, type);
+                // 4. Show Animated Popup Overlay
+                showScanSuccessOverlay(v, nextStatus, now);
 
-                // 5. Pause briefly (2 sec) to prevent double scan, then Resume
-                if (html5QrcodeScanner) {
-                    html5QrcodeScanner.pause();
-                    setTimeout(() => html5QrcodeScanner.resume(), 2000);
-                }
+                // 5. Pause Scanner temporarily
+                html5QrcodeScanner.pause();
 
             } else {
                 showToast(`ID ${text} tidak ditemukan`, 'error');
             }
+        }
+
+        // NEW: Animated Popup Logic
+        function showScanSuccessOverlay(volunteer, status, date) {
+            const overlay = document.getElementById('scan-success-overlay');
+            const card = document.getElementById('scan-card');
+            const iconContainer = document.getElementById('scan-status-icon');
+            const imgLarge = document.getElementById('scan-img-large');
+            const initLarge = document.getElementById('scan-initials-large');
+            const badge = document.getElementById('scan-status-badge');
+
+            // Reset Styles
+            card.classList.remove('masuk', 'pulang');
+            imgLarge.classList.add('hidden');
+            initLarge.classList.add('hidden');
+
+            // Set Status Styles
+            if (status === 'Masuk') {
+                card.classList.add('masuk');
+                iconContainer.innerHTML = '<i class="fas fa-check"></i>';
+                badge.textContent = 'MASUK';
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#15803d';
+            } else {
+                card.classList.add('pulang');
+                iconContainer.innerHTML = '<i class="fas fa-sign-out-alt"></i>';
+                badge.textContent = 'PULANG';
+                badge.style.background = '#fee2e2';
+                badge.style.color = '#b91c1c';
+            }
+
+            // Set Data
+            document.getElementById('scan-name-display').textContent = volunteer.name;
+            document.getElementById('scan-role-display').textContent = volunteer.role;
+            document.getElementById('scan-id-display').textContent = volunteer.id;
+            document.getElementById('scan-time-display').textContent = date.toLocaleTimeString('id-ID');
+
+            // Set Photo or Initials
+            if (volunteer.photo) {
+                imgLarge.src = volunteer.photo;
+                imgLarge.classList.remove('hidden');
+            } else {
+                initLarge.textContent = getInitials(volunteer.name);
+                initLarge.classList.remove('hidden');
+            }
+
+            // Show Overlay
+            overlay.classList.remove('hidden');
+
+            // Auto Hide after 3 seconds
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                // Resume Scanner
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.resume();
+                }
+            }, 3000);
         }
 
         // --- ROBUST QR GENERATION ---
@@ -744,8 +776,7 @@
 
         // --- QR Popup Logic ---
         async function showQr(id) {
-            const vols = await getVolunteers();
-            const v = vols.find(x => x.id === id);
+            const v = getVolunteers().find(x => x.id === id);
             if(!v) return;
             const qrDataUrl = await generateQRImage(v.id);
             const qrImg = document.getElementById('qr-display-img');
@@ -760,15 +791,20 @@
         function openPrintModal(imgUrl, name, id) {
             document.getElementById('print-card-img').src = imgUrl;
             document.getElementById('print-card-name').textContent = `${name} (${id})`;
-            const btn = document.getElementById('download-card-btn');
-            btn.onclick = function() { downloadImage(imgUrl, `IDCard-${id}.png`); };
+            
+            const imgBtn = document.getElementById('download-card-img-btn');
+            const pdfBtn = document.getElementById('download-card-pdf-btn');
+            
+            imgBtn.onclick = function() { downloadImage(imgUrl, `IDCard-${id}.png`); };
+            pdfBtn.onclick = function() { downloadSingleCardPDF(imgUrl, name, id); };
+            
             document.getElementById('print-modal').classList.remove('hidden');
         }
 
         // --- Volunteer CRUD ---
-        async function renderVolunteers() {
+        function renderVolunteers() {
             const list = document.getElementById('volunteer-list');
-            const data = await getVolunteers();
+            const data = getVolunteers();
             list.innerHTML = '';
             data.forEach((v, i) => {
                 const tr = document.createElement('tr');
@@ -794,7 +830,7 @@
             });
         }
 
-        async function openVolunteerModal(index = null) {
+        function openVolunteerModal(index = null) {
             const modal = document.getElementById('volunteer-modal');
             const form = document.getElementById('volunteer-form');
             form.reset();
@@ -804,8 +840,7 @@
             document.getElementById('vol-role').addEventListener('input', updateIdPreview);
 
             if (index !== null) {
-                const vols = await getVolunteers();
-                const v = vols[index];
+                const v = getVolunteers()[index];
                 document.getElementById('vol-index').value = index;
                 document.getElementById('vol-name').value = v.name;
                 document.getElementById('vol-role').value = v.role;
@@ -841,7 +876,8 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        document.getElementById('volunteer-form').addEventListener('submit', async e => {
+
+        document.getElementById('volunteer-form').addEventListener('submit', e => {
             e.preventDefault();
             const index = parseInt(document.getElementById('vol-index').value);
             const id = document.getElementById('vol-id').value;
@@ -850,12 +886,12 @@
             const locker = document.getElementById('vol-locker').value;
             const photo = document.getElementById('vol-photo-base64').value;
 
-            if (locker && await isLockerTaken(locker, index)) {
+            if (locker && isLockerTaken(locker, index)) {
                 showToast(`Nomor Loker ${locker} sudah digunakan!`, 'error');
                 return;
             }
 
-            let volunteers = await getVolunteers();
+            let volunteers = getVolunteers();
 
             if (index === -1) {
                 if (volunteers.some(v => v.id === id)) { showToast('ID Sistem error', 'error'); return; }
@@ -865,26 +901,22 @@
                 volunteers[index] = { id, name, role, locker: locker || '', photo };
                 showToast('Data relawan diperbarui', 'success');
             }
-            await saveVolunteers(volunteers);
+            saveVolunteers(volunteers);
             closeVolunteerModal();
-            await renderVolunteers();
+            renderVolunteers();
         });
 
         function editVolunteer(i) { openVolunteerModal(i); }
-        async function deleteVolunteer(i) {
+        function deleteVolunteer(i) {
             if(confirm('Hapus data ini?')) {
-                let v = await getVolunteers();
-                v.splice(i, 1);
-                await saveVolunteers(v);
-                await renderVolunteers();
-                showToast('Dihapus', 'success');
+                let v = getVolunteers(); v.splice(i, 1); saveVolunteers(v); renderVolunteers(); showToast('Dihapus', 'success');
             }
         }
 
         // --- HISTORY ---
-        async function renderHistory() {
+        function renderHistory() {
             const list = document.getElementById('history-list');
-            const data = await getHistory();
+            const data = getHistory();
             list.innerHTML = data.length ? '' : '<tr><td colspan="5" style="text-align:center; padding:2rem;">Kosong</td></tr>';
             data.forEach(h => {
                 const d = new Date(h.timestamp);
@@ -902,10 +934,8 @@
         }
 
         // --- DATABASE ---
-        async function downloadFullData() {
-            const volunteers = await getVolunteers();
-            const history = await getHistory();
-            const data = { version: APP_VERSION, timestamp: new Date().toISOString(), volunteers, history };
+        function downloadFullData() {
+            const data = { version: APP_VERSION, timestamp: new Date().toISOString(), volunteers: getVolunteers(), history: getHistory() };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
             const a = document.createElement('a');
             a.setAttribute("href", dataStr);
@@ -920,14 +950,14 @@
             if (!f) return;
             if(!confirm("Data akan ditimpa. Lanjutkan?")) { input.value = ''; return; }
             const r = new FileReader();
-            r.onload = async function(e) {
+            r.onload = function(e) {
                 try {
                     const json = JSON.parse(e.target.result);
                     if (json.volunteers && json.history) {
-                        await saveVolunteers(json.volunteers);
-                        await saveHistory(json.history);
+                        saveVolunteers(json.volunteers);
+                        localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(json.history));
                         showToast('Database direstore!', 'success');
-                        await renderDatabaseHistory();
+                        renderDatabaseHistory();
                     } else {
                         showToast('Format file tidak valid!', 'error');
                     }
@@ -936,9 +966,9 @@
             };
             r.readAsText(f);
         }
-        async function renderDatabaseHistory() {
+        function renderDatabaseHistory() {
             const list = document.getElementById('database-history-list');
-            const data = await getHistory();
+            const data = getHistory();
             data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             list.innerHTML = data.length ? '' : '<tr><td colspan="5" style="text-align:center; padding:2rem;">Belum ada riwayat.</td></tr>';
             data.forEach(h => {
@@ -956,9 +986,8 @@
                 list.appendChild(tr);
             });
         }
-        async function exportHistoryToExcel() {
-            const raw = await getHistory();
-            const data = raw.map(h => ({ 
+        function exportHistoryToExcel() {
+            const data = getHistory().map(h => ({ 
                 Waktu: new Date(h.timestamp).toLocaleString(), 
                 ID: h.volunteerId, 
                 Nama: h.name, 
@@ -972,9 +1001,8 @@
         }
 
         // --- EXCEL IMPORT/EXPORT VOLUNTEERS ---
-        async function exportVolunteersToExcel() {
-            const vols = await getVolunteers();
-            const data = vols.map(v => ({ ID: v.id, Nama: v.name, Jabatan: v.role, Loker: v.locker }));
+        function exportVolunteersToExcel() {
+            const data = getVolunteers().map(v => ({ ID: v.id, Nama: v.name, Jabatan: v.role, Loker: v.locker }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Relawan");
             XLSX.writeFile(wb, "Data_Relawan.xlsx");
@@ -988,12 +1016,12 @@
         function importVolunteersFromExcel(input) {
             const f = input.files[0]; if(!f) return;
             const r = new FileReader();
-            r.onload = async e => {
+            r.onload = e => {
                 const wb = XLSX.read(e.target.result, {type:'array'});
                 const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                let v = await getVolunteers();
+                let v = getVolunteers();
                 let count = 0;
-                for(const row of json) {
+                json.forEach(row => {
                     const name = row['Nama'];
                     const role = row['Jabatan'];
                     const locker = row['Loker'] ? row['Loker'].toString() : '';
@@ -1001,13 +1029,13 @@
                         const rPart = generateRandomPart();
                         const lPart = generateLockerPart(locker);
                         const id = `${generateRolePart(role)}${rPart}${lPart}`;
-                        if (!locker || !(await isLockerTaken(locker))) {
+                        if (!locker || !isLockerTaken(locker)) {
                             v.push({ id, name, role, locker, photo: "" });
                             count++;
                         }
                     }
-                }
-                await saveVolunteers(v); await renderVolunteers(); showToast(`${count} data diimport`, 'success'); input.value='';
+                });
+                saveVolunteers(v); renderVolunteers(); showToast(`${count} data diimport`, 'success'); input.value='';
             };
             r.readAsArrayBuffer(f);
         }
@@ -1020,6 +1048,114 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        }
+
+        function downloadSingleCardPDF(imgUrl, name, id) {
+            const element = document.createElement('div');
+            element.style.padding = '20mm';
+            element.style.width = '210mm';
+            element.style.height = '297mm';
+            element.style.margin = '0';
+            element.style.display = 'flex';
+            element.style.alignItems = 'center';
+            element.style.justifyContent = 'center';
+            element.style.backgroundColor = '#f0f0f0';
+            
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            
+            element.appendChild(img);
+            
+            const opt = {
+                margin: 10,
+                filename: `IDCard-${id}-${name}.pdf`,
+                image: { type: 'png', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(element).save();
+        }
+
+        async function downloadBulkCardsPDF() {
+            const volunteers = getVolunteers();
+            if (volunteers.length === 0) {
+                showToast('Tidak ada data relawan', 'warning');
+                return;
+            }
+
+            showToast('Membuat PDF...', 'info');
+
+            const container = document.createElement('div');
+            container.style.width = '210mm';
+            container.style.margin = '0';
+            container.style.padding = '0';
+            
+            // A4 Size: 210mm x 297mm
+            // With 10mm margin: 190mm x 277mm usable
+            // Card: 76mm x 114mm (standard ID card size)
+            // 2 columns x 2.4 rows per page = 2x2 with room for margin
+            
+            let cardCount = 0;
+            let row = null;
+            
+            for (const volunteer of volunteers) {
+                try {
+                    const cardImg = await createCard(volunteer);
+                    
+                    // Create row every 2 cards
+                    if (cardCount % 2 === 0) {
+                        row = document.createElement('div');
+                        row.style.display = 'flex';
+                        row.style.gap = '5mm';
+                        row.style.padding = '5mm';
+                        row.style.justifyContent = 'space-around';
+                        
+                        // Add page break every 4 cards
+                        if (cardCount > 0 && cardCount % 4 === 0) {
+                            const pageBreak = document.createElement('div');
+                            pageBreak.style.pageBreakAfter = 'always';
+                            container.appendChild(pageBreak);
+                        }
+                        
+                        container.appendChild(row);
+                    }
+                    
+                    const cardDiv = document.createElement('div');
+                    cardDiv.style.textAlign = 'center';
+                    cardDiv.style.flex = '1';
+                    
+                    const img = document.createElement('img');
+                    img.src = cardImg;
+                    img.style.width = '76mm';
+                    img.style.height = 'auto';
+                    img.style.border = '1px dashed #ccc';
+                    
+                    cardDiv.appendChild(img);
+                    row.appendChild(cardDiv);
+                    
+                    cardCount++;
+                } catch (error) {
+                    console.error('Error creating card for:', volunteer.name, error);
+                }
+            }
+            
+            const opt = {
+                margin: [10, 5, 10, 5],
+                filename: `Kartu-Relawan-Batch-${new Date().toISOString().slice(0,10)}.pdf`,
+                image: { type: 'png', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { format: 'a4', orientation: 'portrait', compress: true }
+            };
+            
+            html2pdf().set(opt).from(container).save().then(() => {
+                showToast('PDF berhasil dibuat! (' + cardCount + ' kartu)', 'success');
+            }).catch((err) => {
+                console.error('PDF Error:', err);
+                showToast('Gagal membuat PDF', 'error');
+            });
         }
 
         async function createCard(volunteer) {
@@ -1041,6 +1177,10 @@
             ctx.font = 'bold 40px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('KARTU RELAWAN', CARD_WIDTH_PX / 2, 110);
+            
+            // Subtitle
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('SPPG KURANJI #005', CARD_WIDTH_PX / 2, 150);
 
             // 3. Photo OR Initials
             const photoSize = 220;
@@ -1122,10 +1262,10 @@
             return canvas.toDataURL('image/png');
         }
 
-        async function renderCards() {
+        function renderCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = '<p style="text-align:center; width:100%;">Memuat kartu...</p>';
-            const volunteers = await getVolunteers();
+            const volunteers = getVolunteers();
             container.innerHTML = '';
 
             volunteers.forEach(async v => {
@@ -1144,13 +1284,8 @@
         }
 
         // --- Init ---
-        async function initApp() {
-            try {
-                await renderVolunteers();
-            } catch (e) {
-                console.error('Error in initApp:', e);
-                showToast('Gagal memuat data', 'error');
-            }
+        function initApp() {
+            renderVolunteers();
             navigateTo('scanner');
         }
         function showToast(msg, type) {
