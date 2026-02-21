@@ -21,14 +21,20 @@ if (!SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || '');
 
-// Health Check
+// Health Check - Serve index.html for root path
 app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+// API Health Check (for monitoring)
+app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     message: 'Absensi Relawan API Server Running',
     version: '1.0.0',
     endpoints: {
       health: 'GET /',
+      api_health: 'GET /api/health',
       volunteers_count: 'GET /api/volunteers-count',
       history_count: 'GET /api/history-count',
       pg_test: 'GET /api/pg-test',
