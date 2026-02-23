@@ -1,17 +1,21 @@
-# TODO: Perbaikan Aplikasi Absensi ke Supabase
+# Plan: Tampilkan Riwayat Absensi di Halaman Scanner
 
-## Selesai:
-- [x] Buat tabel di Supabase
-- [x] Tambahkan Supabase SDK ke HTML
-- [x] Inisialisasi Supabase client
-- [x] Ganti getVolunteers ke async Supabase query
-- [x] Ganti saveVolunteers ke async Supabase insert/update
-- [x] Ganti getHistory ke async Supabase query
-- [x] Ganti addToHistory ke async Supabase insert
-- [x] Update fungsi yang memanggil data functions untuk await
-- [x] Pastikan scan otomatis masuk/pulang tetap bekerja
-- [x] Tambahkan animasi popup hasil scan
+## Task Understanding
+- Menampilkan riwayat absensi di bagian bawah halaman scan QR code
+- Hanya menampilkan data 5 hari terakhir
+- Kolom yang ditampilkan: Nama, Loker, Jabatan, Waktu, Status
 
-## Pending:
-- [ ] Jalankan aplikasi lokal untuk test
-- [ ] Debug jika ada error
+## Implementation Plan
+
+### 1. Update HTML Structure (index.html)
+- [ ] Menambahkan container untuk riwayat absensi di dalam #view-scanner
+- [ ] Menambahkan style CSS untuk tabel riwayat scanner
+
+### 2. Add JavaScript Functions (index.html)
+- [ ] Membuat fungsi `getRecentHistory()` untuk mendapatkan data 5 hari terakhir
+- [ ] Membuat fungsi `renderScannerHistory()` untuk menampilkan riwayat di scanner
+- [ ] Memanggil render saat scanner dimulai
+- [ ] Update riwayat setelah scan berhasil
+
+## Files to Edit
+- index.html: Tambahkan HTML dan logic untuk menampilkan riwayat di scanner page
