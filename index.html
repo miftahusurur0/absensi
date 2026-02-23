@@ -994,7 +994,19 @@
             return vols.some((v, i) => v.locker === lockerNum.toString() && i !== excludeIndex);
         }
 
-        // --- Logic: Auto Determine Next Status ---
+// --- Logic: Auto Determine Next Status ---
+        async function determineNextStatusAsync(userId) {
+            // First, try to get latest history from API
+            await fetchHistoryFromAPI();
+            const history = getHistory();
+            const userHistory = history.filter(h => h.volunteerId === userId);
+            if (userHistory.length === 0) return 'Masuk';
+            const lastStatus = userHistory[0].status;
+            if (lastStatus === 'Masuk') return 'Pulang';
+            return 'Masuk';
+        }
+
+        // Sync version for backward compatibility
         function determineNextStatus(userId) {
             const history = getHistory();
             const userHistory = history.filter(h => h.volunteerId === userId);
@@ -1089,14 +1101,21 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             });
         }
 
-        function renderScannerHistory() {
+function renderScannerHistory() {
             const list = document.getElementById('scanner-history-list');
-            const recentHistory = getRecentHistory();
+            let recentHistory = getRecentHistory();
             
             if (recentHistory.length === 0) {
                 list.innerHTML = '<li class="scanner-history-empty">Belum ada absensi 5 hari terakhir</li>';
                 return;
             }
+
+            // Sort by name alphabetically
+            recentHistory.sort((a, b) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
 
             list.innerHTML = '';
             recentHistory.forEach(h => {
@@ -1148,9 +1167,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         
         const COOLDOWN_MS = 5 * 60 * 1000; 
 
-        function onScanSuccess(text) {
+async function onScanSuccess(text) {
             const v = getVolunteers().find(x => x.id === text);
             if (v) {
+                // Fetch latest status from API first
+                await fetchHistoryFromAPI();
                 const nextStatus = determineNextStatus(v.id);
                 const now = new Date();
                 const nowTime = now.getTime();
