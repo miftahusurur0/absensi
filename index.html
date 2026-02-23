@@ -857,6 +857,91 @@
         })();
 
         // --- Data Logic ---
+// API Configuration
+        const API_BASE_URL = 'http://localhost:3001/api';
+
+        // Async function to fetch volunteers from database
+        async function fetchVolunteersFromAPI() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/volunteers`);
+                const result = await response.json();
+                if (result.ok) {
+                    localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(result.data));
+                    return result.data;
+                }
+                return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]');
+            } catch (err) {
+                console.error('Error fetching volunteers:', err);
+                return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]');
+            }
+        }
+
+        // Async function to save volunteer to database
+        async function saveVolunteerToAPI(volunteer) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/volunteers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(volunteer)
+                });
+                const result = await response.json();
+                if (result.ok) {
+                    await fetchVolunteersFromAPI();
+                }
+                return result;
+            } catch (err) {
+                console.error('Error saving volunteer:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        // Async function to fetch history from database
+        async function fetchHistoryFromAPI() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/history`);
+                const result = await response.json();
+                if (result.ok) {
+                    localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(result.data));
+                    return result.data;
+                }
+                return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]');
+            } catch (err) {
+                console.error('Error fetching history:', err);
+                return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]');
+            }
+        }
+
+        // Async function to add history to database
+        async function addHistoryToAPI(record) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(record)
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Error adding history:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        // Login API function
+        async function loginToAPI(username, password) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Error logging in:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        // Keep localStorage functions as fallback
         function getVolunteers() { return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]'); }
         function saveVolunteers(data) { localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(data)); }
         function getHistory() { return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]'); }
@@ -864,6 +949,8 @@
             const history = getHistory();
             history.unshift(record);
             localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(history));
+            // Also save to API
+            addHistoryToAPI(record);
         }
 
         function getInitials(name) {
@@ -928,16 +1015,28 @@
                 document.getElementById('main-app').classList.add('hidden');
             }
         }
-        document.getElementById('login-form').addEventListener('submit', (e) => {
+document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
-            if (u === 'admin' && p === 'admin') {
+            
+            // Try database login first, fallback to localStorage
+            const result = await loginToAPI(u, p);
+            
+            if (result.ok) {
                 localStorage.setItem(SESSION_KEY, 'active');
+                localStorage.setItem('user_data', JSON.stringify(result.user));
                 Toast.fire({ icon: 'success', title: 'Login Berhasil' });
                 checkAuth();
             } else {
-                Toast.fire({ icon: 'error', title: 'Username/Password salah' });
+                // Fallback to localStorage check for offline mode
+                if (u === 'admin' && p === 'admin') {
+                    localStorage.setItem(SESSION_KEY, 'active');
+                    Toast.fire({ icon: 'success', title: 'Login Berhasil (Offline Mode)' });
+                    checkAuth();
+                } else {
+                    Toast.fire({ icon: 'error', title: result.error || 'Username/Password salah' });
+                }
             }
         });
         function logout() {

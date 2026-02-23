@@ -61,6 +61,69 @@ app.get('/api/db-test', async (req, res) => {
   }
 });
 
+// Login API - Check credentials against database
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: 'Username and password required' });
+    }
+
+    const result = await sql`
+      SELECT id, username, role FROM users 
+      WHERE username = ${username} AND password = ${password};
+    `;
+
+    if (result.length === 0) {
+      return res.status(401).json({ ok: false, error: 'Invalid username or password' });
+    }
+
+    const user = result[0];
+    res.json({ 
+      ok: true, 
+      message: 'Login successful',
+      user: { id: user.id, username: user.username, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Register new user
+app.post('/api/register', async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: 'Username and password required' });
+    }
+
+    const result = await sql`
+      INSERT INTO users (username, password, role)
+      VALUES (${username}, ${password}, ${role || 'admin'})
+      RETURNING id, username, role;
+    `;
+
+    res.json({ ok: true, message: 'User created successfully', user: result[0] });
+  } catch (err) {
+    if (err.message.includes('duplicate key') || err.message.includes('unique')) {
+      return res.status(400).json({ ok: false, error: 'Username already exists' });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+  try {
+    const data = await sql`SELECT id, username, role, created_at FROM users ORDER BY created_at DESC;`;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Get Volunteers Count (Neon)
 app.get('/api/volunteers-count', async (req, res) => {
   try {

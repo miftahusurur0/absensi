@@ -51,11 +51,34 @@ async function initializeDatabase() {
     `;
     console.log('✓ history table created');
 
+// Create users table for admin login
+    console.log('📋 Creating users table...');
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    console.log('✓ users table created');
+
+    // Insert default admin user if not exists
+    const existingAdmin = await sql`SELECT id FROM users WHERE username = 'admin';`;
+    if (existingAdmin.length === 0) {
+      // Default password: admin (in production, use hashed password)
+      await sql`INSERT INTO users (username, password, role) VALUES ('admin', 'admin', 'admin');`;
+      console.log('✓ Default admin user created (username: admin, password: admin)');
+    }
+
     // Create indexes for better performance
     console.log('📋 Creating indexes...');
     await sql`CREATE INDEX IF NOT EXISTS idx_history_volunteer_id ON history(volunteer_id);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_volunteers_card_number ON volunteers(card_number);`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);`;
     console.log('✓ Indexes created');
 
     console.log('\n✅ Database initialization completed successfully!\n');
