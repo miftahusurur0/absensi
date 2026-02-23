@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Absensi Relawan v7.4</title>
+    <title>Absensi Relawan v7.7 (SweetAlert)</title>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#2563eb">
@@ -27,243 +27,362 @@
     <!-- PDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <!-- Image Download Library -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- SweetAlert2 (Notifications) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        /* --- CSS VARIABLES & THEMES --- */
         :root {
+            /* Light Mode Default */
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
             --primary: #2563eb;
             --secondary: #1e40af;
             --success: #22c55e;
             --danger: #ef4444;
             --warning: #f59e0b;
-            --light: #f3f4f6;
-            --dark: #1f2937;
-            --white: #ffffff;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --header-bg: rgba(255, 255, 255, 0.9);
+            --input-bg: #ffffff;
+            --login-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: var(--light); color: var(--dark); height: 100vh; display: flex; flex-direction: column; user-select: none; -webkit-tap-highlight-color: transparent; }
+        [data-theme="dark"] {
+            /* Dark Mode Overrides */
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+            --primary: #3b82f6;
+            --secondary: #60a5fa;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            --header-bg: rgba(31, 41, 55, 0.9);
+            --input-bg: #374151;
+            --login-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+        }
+
+        /* --- Global Reset & Base --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; user-select: none; -webkit-tap-highlight-color: transparent; overflow: hidden; }
         .hidden { display: none !important; }
         
-        /* Buttons */
+        /* --- Buttons --- */
         .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; text-decoration: none; touch-action: manipulation; }
-        .btn-primary { background-color: var(--primary); color: var(--white); box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
+        .btn-primary { background-color: var(--primary); color: #fff; box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
         .btn-primary:active { background-color: var(--secondary); transform: translateY(1px); }
-        .btn-success { background-color: var(--success); color: var(--white); }
-        .btn-danger { background-color: var(--danger); color: var(--white); }
+        .btn-success { background-color: var(--success); color: #fff; }
+        .btn-danger { background-color: var(--danger); color: #fff; }
         .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); }
         .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-full { width: 100%; justify-content: flex-start; margin-bottom: 10px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-full:hover { background: var(--bg-color); }
 
-        /* Login */
-        #login-page { display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 20px; }
-        .login-card { background: var(--white); padding: 2.5rem; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        /* --- Login Page (Tech Theme) --- */
+        #login-page { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--login-gradient);
+            display: flex; justify-content: center; align-items: center; 
+            padding: 20px; z-index: 50; overflow-y: auto;
+        }
+        
+        #login-page::before {
+            content: "";
+            position: absolute; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+        }
+
+        .login-container { display: flex; gap: 2rem; max-width: 1000px; width: 100%; flex-wrap: wrap; justify-content: center; align-items: center; z-index: 10; }
+        
+        .login-card { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2.5rem; 
+            border-radius: 20px; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); 
+            width: 100%; max-width: 400px; 
+            text-align: center; color: white;
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        .login-card h2 { margin-bottom: 0.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .login-card p { margin-bottom: 2rem; color: rgba(255,255,255,0.8); font-size: 0.9rem; }
+        
+        .login-info-card {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            color: white;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
+            animation: slideInRight 0.6s ease-out;
+        }
+        .login-info-card h3 { margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
+        .login-info-card p { font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem; opacity: 0.9; }
+        .login-info-card ul { list-style: none; padding-left: 0; font-size: 0.9rem; }
+        .login-info-card li { margin-bottom: 8px; display: flex; align-items: start; gap: 10px; }
+        .login-info-card i { margin-top: 4px; color: #60a5fa; }
+
         .form-group { margin-bottom: 1.2rem; text-align: left; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; color: #374151; }
-        .form-control { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; transition: border 0.2s; }
-        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .form-control[readonly] { background-color: #f9fafb; cursor: not-allowed; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; color: #fff; }
+        
+        .input-wrapper { position: relative; }
+        .input-wrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.7); z-index: 10; }
+        
+        #login-form .form-control { 
+            width: 100%; padding: 12px 12px 12px 42px; 
+            border: 1px solid rgba(255,255,255,0.3); 
+            border-radius: 8px; font-size: 1rem; 
+            background: rgba(255,255,255,0.9); 
+            color: #1f2937; transition: 0.2s; 
+        }
+        #login-form .form-control:focus { outline: none; border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.3); }
+        #login-form .btn-primary { background: #ffffff; color: #2563eb; width: 100%; font-weight: bold; }
+        #login-form .btn-primary:hover { background: #f0f0f0; }
 
-        /* Main App */
-        header { background: var(--white); padding: 1rem; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; z-index: 100; position: sticky; top: 0; flex-wrap: wrap; gap: 10px; min-height: auto; }
+        /* --- Main App Layout --- */
+        header { background: var(--header-bg); backdrop-filter: blur(10px); padding: 0.8rem 1rem; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; z-index: 100; position: relative; border-bottom: 1px solid var(--border-color); }
         .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; }
         .version-badge { background: #e0e7ff; color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
+        [data-theme="dark"] .version-badge { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         
-        .nav-buttons { display: flex; gap: 8px; overflow-x: auto; flex-wrap: wrap; flex: 1; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; justify-content: flex-end; align-items: center; }
-        .nav-buttons::-webkit-scrollbar { display: none; }
-        
-        /* Responsive button styling */
-        .nav-buttons .btn span { display: inline; }
-        .nav-buttons .btn { padding: 10px 16px; font-size: 0.85rem; }
-        .nav-buttons .btn-danger { padding: 10px 12px; min-width: auto; }
-        
+        /* Desktop Nav */
+        .desktop-nav { display: flex; gap: 10px; align-items: center; }
+        .nav-buttons { display: flex; gap: 8px; }
+        .nav-buttons .btn { padding: 10px 16px; font-size: 0.85rem; white-space: nowrap; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); }
+        .nav-buttons .btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Theme Toggle */
+        .theme-toggle { display: flex; gap: 5px; background: var(--bg-color); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .theme-btn { width: 32px; height: 32px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .theme-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: bold; }
+
+        /* Hamburger Button */
+        #hamburger-btn { background: transparent; border: none; color: var(--text-main); font-size: 1.5rem; padding: 5px; cursor: pointer; }
+
+        /* Mobile Menu Overlay */
+        #mobile-menu {
+            position: fixed; top: 0; right: 0; width: 280px; height: 100%;
+            background: var(--card-bg);
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column;
+            padding: 20px;
+            border-left: 1px solid var(--border-color);
+        }
+        #mobile-menu.open { transform: translateX(0); }
+
+        #mobile-menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        #mobile-menu h3 { font-size: 1.2rem; color: var(--text-main); }
+        .close-menu-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+
+        .mobile-menu-section { margin-bottom: 20px; }
+        .mobile-menu-section h4 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 1px; }
+
+        /* Main Content */
         main { flex: 1; padding: 1rem; overflow-y: auto; max-width: 1200px; margin: 0 auto; width: 100%; -webkit-overflow-scrolling: touch; }
 
-        /* Tables */
-        .table-container { background: var(--white); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; margin-top: 1rem; border: 1px solid #f3f4f6; }
+        /* --- Tables --- */
+        .table-container { background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; margin-top: 1rem; border: 1px solid var(--border-color); }
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
-        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f3f4f6; }
-        th { background-color: #f9fafb; font-weight: 600; color: #4b5563; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: var(--bg-color); font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
         
-        /* Avatar Styles */
-        .avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #e5e7eb; }
-        .initials-badge {
-            width: 40px; height: 40px; border-radius: 50%;
-            background: var(--primary); color: var(--white);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 0.85rem; box-shadow: 0 2px 4px rgba(37,99,235,0.3);
-        }
+        /* --- Avatar & Badges --- */
+        .avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--border-color); }
+        .initials-badge { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
 
-        /* Scanner Container */
+        /* --- Scanner --- */
         .scanner-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-        #reader { width: 100%; max-width: 500px; border-radius: 16px; overflow: hidden; margin-bottom: 1rem; background: #000; box-shadow: var(--shadow); }
+        #reader { width: 100%; max-width: 500px; border-radius: 16px; overflow: hidden; margin-bottom: 1rem; background: #000; box-shadow: var(--shadow); min-height: 300px; }
 
-        /* Cards Page */
+        /* --- Cards Grid --- */
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 10px; }
-        .card-preview-item { background: white; border-radius: 12px; padding: 15px; box-shadow: var(--shadow); text-align: center; display: flex; flex-direction: column; align-items: center; border: 1px solid #e5e7eb; transition: transform 0.2s; }
-        .card-preview-item:active { transform: scale(0.98); }
-        .card-preview-img { width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; cursor: zoom-in; }
+        .card-preview-item { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: var(--shadow); text-align: center; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color); transition: transform 0.2s; }
+        .card-preview-img { width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px; cursor: zoom-in; }
 
-        /* Database Page Styles */
-        .db-controls { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border: 1px solid #e5e7eb; }
-        .db-info { flex: 1; font-size: 0.9rem; color: #4b5563; }
+        /* --- Danger Zone --- */
+        .danger-zone { border: 1px dashed var(--danger); background: rgba(239, 68, 68, 0.05); border-radius: 12px; padding: 20px; margin-top: 20px; }
+        .danger-zone h4 { color: var(--danger); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        [data-theme="dark"] .danger-zone { background: rgba(239, 68, 68, 0.1); }
 
-        /* Modals */
+        /* --- Database Controls --- */
+        .db-controls { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border: 1px solid var(--border-color); }
+        .db-info { flex: 1; font-size: 0.9rem; color: var(--text-muted); }
+
+        /* --- Modals --- */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: var(--white); padding: 2rem; border-radius: 20px; width: 90%; max-width: 420px; text-align: center; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .modal-content { background: var(--card-bg); padding: 2rem; border-radius: 20px; width: 90%; max-width: 420px; text-align: center; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border-color); }
+        .modal-content h3 { color: var(--text-main); margin-bottom: 1.5rem; font-size: 1.3rem; }
+        .modal-content p { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes slideInLeft { from { transform: translateX(-50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* --- NEW: Animated Scan Success Popup --- */
-        #scan-success-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 2000; /* Di atas scanner */
-            display: flex; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .scan-success-card {
-            background: white;
-            width: 90%; max-width: 360px;
-            border-radius: 20px;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);
-            animation: slideUpFade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        @keyframes slideUpFade {
-            from { transform: translateY(50px) scale(0.9); opacity: 0; }
-            to { transform: translateY(0) scale(1); opacity: 1; }
-        }
-
-        .scan-status-circle {
-            width: 80px; height: 80px;
-            border-radius: 50%;
-            margin: 0 auto 1rem auto;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 2.5rem;
-            color: white;
-            animation: popCircle 0.6s ease;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
-        }
-
-        @keyframes popCircle {
-            0% { transform: scale(0); }
-            60% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        /* Status Styles for Popup */
+        /* --- Scan Success Overlay --- */
+        #scan-success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .scan-success-card { background: white; width: 90%; max-width: 360px; border-radius: 20px; padding: 2rem; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); animation: slideUpFade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden; position: relative; }
+        @keyframes slideUpFade { from { transform: translateY(50px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        .scan-status-circle { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem auto; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; color: white; animation: popCircle 0.6s ease; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); }
+        @keyframes popCircle { 0% { transform: scale(0); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
         .scan-success-card.masuk .scan-status-circle { background: var(--success); }
         .scan-success-card.pulang .scan-status-circle { background: var(--danger); }
         .scan-success-card.masuk { border-top: 5px solid var(--success); }
         .scan-success-card.pulang { border-top: 5px solid var(--danger); }
+        .scan-avatar-large { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto 1rem auto; border: 3px solid #e5e7eb; }
+        .scan-initials-large { width: 100px; height: 100px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; margin: 0 auto 1rem auto; border: 3px solid #e5e7eb; }
 
-        .scan-avatar-large {
-            width: 100px; height: 100px; border-radius: 50%;
-            object-fit: cover; margin: 0 auto 1rem auto;
-            border: 3px solid #e5e7eb;
-        }
-        
-        .scan-initials-large {
-            width: 100px; height: 100px; border-radius: 50%;
-            background: var(--primary); color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2.5rem; font-weight: 800;
-            margin: 0 auto 1rem auto;
-            border: 3px solid #e5e7eb;
-        }
+        /* --- QR Display --- */
+        #qr-display-img { width: 220px; height: 220px; margin: 1rem 0; border: 1px solid var(--border-color); padding: 10px; border-radius: 10px; background: #fff; }
 
-        /* QR Display Modal */
-        #qr-display-img { width: 220px; height: 220px; margin: 1rem 0; border: 1px solid #ddd; padding: 10px; border-radius: 10px; }
+        /* --- Print Modal --- */
+        .print-card-preview { max-width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
 
-        /* Print Modal */
-        .print-card-preview { max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
-
-        /* Toast (Old style, keeping as fallback or small errors) */
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1f2937; color: #ffffff; padding: 14px 28px; border-radius: 50px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; opacity: 0; transition: 0.3s; width: 90%; max-width: 400px; text-align: center; font-size: 0.9rem; }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .toast.success { background: var(--success); }
-        .toast.error { background: var(--danger); }
-        .toast.warning { background: var(--warning); color: #fff; }
-
-        /* Toolbar */
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 
-        /* Tablet breakpoint */
+        /* --- Responsive Breakpoints --- */
         @media (max-width: 768px) {
-            header { padding: 0.75rem; flex-wrap: nowrap; }
-            .brand { font-size: 1rem; gap: 6px; }
-            .version-badge { font-size: 0.6rem; padding: 1px 6px; }
-            
-            .nav-buttons { gap: 6px; }
-            .nav-buttons .btn { padding: 8px 10px; font-size: 0.75rem; }
-            .nav-buttons .btn span { display: none; }
-            .nav-buttons .btn-danger { padding: 8px 8px; }
-            
+            .login-container { flex-direction: column; gap: 1rem; }
+            .desktop-nav { display: none !important; }
+            #hamburger-btn { display: block !important; }
             .toolbar, .db-controls { flex-direction: column; align-items: stretch; }
             .modal-content { width: 95%; padding: 1.5rem; }
         }
         
-        /* Mobile breakpoint */
-        @media (max-width: 480px) {
-            header { padding: 0.5rem; gap: 6px; }
-            .brand { font-size: 0.9rem; gap: 4px; }
-            .version-badge { font-size: 0.55rem; padding: 1px 4px; }
-            
-            .nav-buttons { gap: 4px; }
-            .nav-buttons .btn { padding: 6px 8px; font-size: 0.7rem; }
-            .nav-buttons .btn i { font-size: 0.9rem; }
-            .nav-buttons .btn-danger { padding: 6px 6px; }
+        @media (min-width: 769px) {
+            #hamburger-btn { display: none; }
+            #mobile-menu { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Login Page -->
+    <!-- Login Page (Tech Theme) -->
     <div id="login-page">
-        <div class="login-card">
-            <div style="margin-bottom: 1rem; color: var(--primary);"><i class="fas fa-qrcode fa-3x"></i></div>
-            <h2 style="margin-bottom: 0.5rem;">Absensi Relawan</h2>
-            <p style="margin-bottom: 2rem; color: #6b7280; font-size: 0.9rem;">Masuk untuk melanjutkan</p>
-            <form id="login-form">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="username" class="form-control" placeholder="Username" required>
+        <div class="login-container">
+            <div class="login-card">
+                <div style="margin-bottom: 1.5rem; font-size: 3rem; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.5);">
+                    <i class="fas fa-qrcode"></i>
                 </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="password" class="form-control" placeholder="Password" required>
+                <h2>Absensi Relawan</h2>
+                <p>Masuk untuk mengakses sistem.</p>
+                
+                <form id="login-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="username" class="form-control" placeholder="Username" required autocomplete="username">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" class="form-control" placeholder="Password" required autocomplete="current-password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">MASUK SISTEM</button>
+                </form>
+                
+                <div style="margin-top: 1.5rem; font-size: 0.8rem; opacity: 0.7;">
+                    v7.7 SweetAlert Edition
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Masuk</button>
-            </form>
+            </div>
+
+            <div class="login-info-card">
+                <h3><i class="fas fa-info-circle"></i> Tentang Scan</h3>
+                <p>Sistem absensi digital berbasis QR Code yang cepat, akurat, dan mudah digunakan.</p>
+                
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> <span><strong>Otomatis:</strong> Mendeteksi status Masuk/Pulang.</span></li>
+                    <li><i class="fas fa-shield-alt"></i> <span><strong>Aman:</strong> Enkripsi data lokal & login admin.</span></li>
+                    <li><i class="fas fa-history"></i> <span><strong>Real-time:</strong> Riwayat tersimpan langsung di perangkat.</span></li>
+                </ul>
+
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem;">
+                    <p><i class="fas fa-mobile-alt"></i> Gunakan kamera belakang untuk hasil scan terbaik.</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Main App -->
     <div id="main-app" class="hidden">
         <header>
-            <div class="brand"><i class="fas fa-qrcode"></i> Absensi <span class="version-badge" id="version-display">v7.4</span></div>
-            <div class="nav-buttons">
-                <button class="btn btn-primary" onclick="navigateTo('scanner')"><i class="fas fa-camera"></i> <span>Scan</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('history')"><i class="fas fa-history"></i> <span>Riwayat</span></button>
-                <button class="btn btn-outline" onclick="navigateTo('volunteers')"><i class="fas fa-users"></i> <span>Relawan</span></button>
-                <button class="btn btn-outline" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
-                <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
-                <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+            <div class="brand"><i class="fas fa-qrcode"></i> Absensi <span class="version-badge" id="version-display">v7.7</span></div>
+            
+            <!-- Desktop Nav (Hidden on Mobile) -->
+            <div class="desktop-nav">
+                <div class="nav-buttons">
+                    <button class="btn" onclick="navigateTo('scanner')"><i class="fas fa-camera"></i> <span>Scan</span></button>
+                    <button class="btn" onclick="navigateTo('history')"><i class="fas fa-history"></i> <span>Riwayat</span></button>
+                    <button class="btn" onclick="navigateTo('volunteers')"><i class="fas fa-users"></i> <span>Relawan</span></button>
+                    <button class="btn" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
+                    <button class="btn" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
+                    <button class="btn" style="border-color: var(--danger); color: var(--danger);" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+
+                <div class="theme-toggle">
+                    <button class="theme-btn" onclick="setTheme('light')" title="Terang"><i class="fas fa-sun"></i></button>
+                    <button class="theme-btn" onclick="setTheme('dark')" title="Gelap"><i class="fas fa-moon"></i></button>
+                    <button class="theme-btn" onclick="setTheme('auto')" title="Otomatis"><i class="fas fa-desktop"></i></button>
+                </div>
             </div>
+
+            <!-- Hamburger Button (Visible on Mobile) -->
+            <button id="hamburger-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
         </header>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu">
+            <div id="mobile-menu-header">
+                <h3>Menu</h3>
+                <button class="close-menu-btn" onclick="toggleMobileMenu()"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="mobile-menu-section">
+                <h4>Navigasi</h4>
+                <button class="btn btn-full" onclick="mobileNavigate('scanner')"><i class="fas fa-camera" style="width:20px; color:var(--primary);"></i> Scan QR Code</button>
+                <button class="btn btn-full" onclick="mobileNavigate('history')"><i class="fas fa-history" style="width:20px; color:var(--primary);"></i> Riwayat Absensi</button>
+                <button class="btn btn-full" onclick="mobileNavigate('volunteers')"><i class="fas fa-users" style="width:20px; color:var(--primary);"></i> Data Relawan</button>
+                <button class="btn btn-full" onclick="mobileNavigate('cards')"><i class="fas fa-id-card" style="width:20px; color:var(--success);"></i> Kartu ID</button>
+                <button class="btn btn-full" onclick="mobileNavigate('database')"><i class="fas fa-database" style="width:20px; color:var(--warning);"></i> Database</button>
+            </div>
+
+            <div class="mobile-menu-section">
+                <h4>Pengaturan</h4>
+                <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <button class="theme-btn" onclick="setTheme('light')" title="Terang"><i class="fas fa-sun"></i></button>
+                    <button class="theme-btn" onclick="setTheme('dark')" title="Gelap"><i class="fas fa-moon"></i></button>
+                    <button class="theme-btn" onclick="setTheme('auto')" title="Otomatis"><i class="fas fa-desktop"></i></button>
+                </div>
+            </div>
+
+            <div class="mobile-menu-section" style="margin-top: auto;">
+                <button class="btn btn-full" style="border-color: var(--danger); color: var(--danger);" onclick="logout()"><i class="fas fa-sign-out-alt" style="width:20px;"></i> Keluar Aplikasi</button>
+            </div>
+        </div>
 
         <main>
             <!-- View: Scanner -->
             <section id="view-scanner" class="scanner-container">
                 <h2 style="margin-bottom: 0.5rem;">Scan QR Code</h2>
                 <div id="reader"></div>
-                <p style="margin-top: 15px; color: #6b7280; font-size: 0.9rem;">Arahkan kamera ke QR Code.</p>
+                <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">Arahkan kamera ke QR Code.</p>
             </section>
 
             <!-- View: History -->
@@ -291,11 +410,11 @@
             <!-- View: Volunteers -->
             <section id="view-volunteers" class="hidden">
                 <div class="toolbar">
-                    <div class="toolbar-left" style="display:flex; gap:10px; align-items:center;">
+                    <div style="display:flex; gap:10px; align-items:center;">
                         <h2>Data Relawan</h2>
                         <button class="btn btn-primary" onclick="openVolunteerModal()"><i class="fas fa-plus"></i> Tambah</button>
                     </div>
-                    <div class="toolbar-right" style="display:flex; gap:5px; overflow-x:auto;">
+                    <div style="display:flex; gap:5px; overflow-x:auto;">
                         <button class="btn btn-sm btn-outline" onclick="downloadTemplate()"><i class="fas fa-download"></i> Template</button>
                         <label class="btn btn-sm btn-outline" style="cursor: pointer;">
                             <i class="fas fa-upload"></i> Import
@@ -328,18 +447,16 @@
                     <h2>Kartu ID Relawan</h2>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-primary" onclick="renderCards()"><i class="fas fa-sync"></i> Refresh</button>
-                        <button class="btn btn-success" onclick="downloadBulkCardsPDF()" title="Download semua kartu dalam format A4"><i class="fas fa-file-pdf"></i> Cetak Semua PDF</button>
+                        <button class="btn btn-success" onclick="downloadBulkCardsPDF()"><i class="fas fa-file-pdf"></i> Cetak Semua PDF</button>
                     </div>
                 </div>
-                <div id="cards-container" class="cards-grid">
-                    <!-- Cards generated by JS -->
-                </div>
+                <div id="cards-container" class="cards-grid"></div>
             </section>
 
             <!-- View: Database -->
             <section id="view-database" class="hidden">
                 <h2>Manajemen Database</h2>
-                <p style="margin-bottom: 15px; color:#6b7280; font-size:0.9rem;">Backup atau Restore seluruh data aplikasi.</p>
+                <p style="margin-bottom: 15px; color:var(--text-muted); font-size:0.9rem;">Backup atau Restore seluruh data aplikasi.</p>
                 
                 <div class="db-controls">
                     <div class="db-info">
@@ -352,7 +469,13 @@
                     </label>
                 </div>
 
-                <div class="toolbar">
+                <div class="danger-zone">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Zona Bahaya</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 10px; color: var(--text-muted);">Hapus data secara permanen. Tindakan ini tidak dapat dibatalkan.</p>
+                    <button class="btn btn-danger" onclick="openResetModal()"><i class="fas fa-trash-alt"></i> Reset Data</button>
+                </div>
+
+                <div class="toolbar" style="margin-top: 20px;">
                     <h3>Riwayat Absensi</h3>
                     <button class="btn btn-success" onclick="exportHistoryToExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
                 </div>
@@ -374,29 +497,21 @@
         </main>
     </div>
 
-    <!-- NEW: Animated Scan Success Popup -->
+    <!-- Animated Scan Success Popup -->
     <div id="scan-success-overlay" class="hidden">
         <div id="scan-card" class="scan-success-card">
-            <div id="scan-status-icon" class="scan-status-circle">
-                <!-- Icon set by JS -->
-            </div>
-            
+            <div id="scan-status-icon" class="scan-status-circle"></div>
             <div id="scan-photo-container">
                 <img id="scan-img-large" class="scan-avatar-large hidden">
                 <div id="scan-initials-large" class="scan-initials-large hidden"></div>
             </div>
-
             <h2 id="scan-name-display" style="font-size:1.4rem; margin-bottom:5px; color:var(--dark);">Nama Relawan</h2>
             <p id="scan-role-display" style="color:#6b7280; font-weight:600;">Jabatan</p>
-            
             <div style="background:#f3f4f6; padding:10px; border-radius:8px; margin: 15px 0;">
                 <p style="font-size:0.9rem; color:#666;">ID: <span id="scan-id-display" style="font-weight:bold;">-</span></p>
                 <p style="font-size:0.9rem; color:#666;">Waktu: <span id="scan-time-display" style="font-weight:bold;">-</span></p>
             </div>
-
-            <div id="scan-status-badge" style="padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; letter-spacing: 1px; display:inline-block;">
-                STATUS
-            </div>
+            <div id="scan-status-badge" style="padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; letter-spacing: 1px; display:inline-block;">STATUS</div>
         </div>
     </div>
 
@@ -408,7 +523,7 @@
                 <img id="qr-display-img" src="" alt="QR Code">
             </div>
             <p id="qr-display-name" style="font-weight: bold; font-size:1.1rem;">Nama</p>
-            <p id="qr-display-id" style="color: #6b7280;">ID</p>
+            <p id="qr-display-id" style="color: var(--text-muted);">ID</p>
             <div style="margin-top: 20px;">
                 <button class="btn btn-outline" onclick="document.getElementById('qr-modal').classList.add('hidden')" style="width:100%">Tutup</button>
             </div>
@@ -443,7 +558,7 @@
                     <label>Foto Profil</label>
                     <input type="file" id="vol-photo-file" class="form-control" accept="image/*" onchange="previewImage(this)">
                     <input type="hidden" id="vol-photo-base64">
-                    <img id="preview-img" src="" class="hidden" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-top: 10px; display: block; border:2px solid #ddd;">
+                    <img id="preview-img" src="" class="hidden" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-top: 10px; display: block; border:2px solid var(--border-color);">
                 </div>
 
                 <div class="form-group">
@@ -464,7 +579,7 @@
                 <div class="form-group">
                     <label>ID Relawan (Otomatis)</label>
                     <div style="display:flex; gap:5px;">
-                        <input type="text" id="vol-id" class="form-control" readonly style="background:#f9fafb; font-weight:bold; color:#6b7280;">
+                        <input type="text" id="vol-id" class="form-control" readonly style="background:var(--bg-color); font-weight:bold; color:var(--text-muted);">
                         <button type="button" class="btn btn-sm btn-outline" onclick="generateNewRandomPart()"><i class="fas fa-sync"></i></button>
                     </div>
                 </div>
@@ -477,21 +592,90 @@
         </div>
     </div>
 
-    <div id="toast" class="toast">Pesan notifikasi</div>
-
     <script>
         // --- Config & State ---
-        const APP_VERSION = "7.4";
-        const DB_KEY_VOLUNTEERS = 'absensi_volunteers_v74';
-        const DB_KEY_HISTORY = 'absensi_history_v74';
+        const APP_VERSION = "7.7";
+        const DB_KEY_VOLUNTEERS = 'absensi_volunteers_v77';
+        const DB_KEY_HISTORY = 'absensi_history_v77';
         const SESSION_KEY = 'absensi_admin_session';
         
         let html5QrcodeScanner = null;
         let isScanning = false;
-
-        // Portrait Card Dimensions
         const CARD_WIDTH_PX = 638;
         const CARD_HEIGHT_PX = 1011;
+
+        // --- SweetAlert Configuration ---
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Update SweetAlert Theme dynamically
+        function updateSwalTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                Swal.getPopup().classList.add('swal2-dark');
+            } else {
+                Swal.getPopup().classList.remove('swal2-dark');
+            }
+        }
+        // Hook into SweetAlert lifecycle to apply theme
+        Swal.updateTheme = updateSwalTheme; 
+
+        // --- THEME SYSTEM ---
+        function getPreferredTheme() {
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) return storedTheme;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme') || 'auto';
+            const activeBtns = document.querySelectorAll('.theme-btn');
+            activeBtns.forEach(btn => btn.classList.remove('active'));
+
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.querySelector('.theme-btn[onclick="setTheme(\'dark\')"]').classList.add('active');
+            } else if (theme === 'light') {
+                document.documentElement.removeAttribute('data-theme');
+                document.querySelector('.theme-btn[onclick="setTheme(\'light\')"]').classList.add('active');
+            } else {
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                document.querySelector('.theme-btn[onclick="setTheme(\'auto\')"]').classList.add('active');
+            }
+            // Trigger SweetAlert theme update if it's open
+            if(Swal.isVisible()) {
+                updateSwalTheme();
+            }
+        }
+
+        // --- MOBILE MENU TOGGLE ---
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('open');
+        }
+
+        function mobileNavigate(view) {
+            toggleMobileMenu();
+            navigateTo(view);
+        }
 
         // --- PWA Manifest Injection ---
         (function() {
@@ -595,18 +779,28 @@
             const p = document.getElementById('password').value;
             if (u === 'admin' && p === 'admin') {
                 localStorage.setItem(SESSION_KEY, 'active');
-                showToast('Login Berhasil', 'success');
+                Toast.fire({ icon: 'success', title: 'Login Berhasil' });
                 checkAuth();
             } else {
-                showToast('Username/Password salah', 'error');
+                Toast.fire({ icon: 'error', title: 'Username/Password salah' });
             }
         });
         function logout() {
-            if(confirm('Keluar?')) {
-                localStorage.removeItem(SESSION_KEY);
-                stopScanner();
-                location.reload();
-            }
+            Swal.fire({
+                title: 'Keluar?',
+                text: "Anda harus login kembali untuk masuk.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Keluar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem(SESSION_KEY);
+                    stopScanner();
+                    location.reload();
+                }
+            })
         }
 
         // --- Navigation ---
@@ -631,7 +825,7 @@
             html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, () => {})
             .then(() => isScanning = true)
-            .catch(() => showToast("Gagal akses kamera", "error"));
+            .catch(() => Toast.fire({ icon: 'error', title: 'Gagal akses kamera' }));
         }
         function stopScanner() {
             if (html5QrcodeScanner && isScanning) {
@@ -641,14 +835,10 @@
         
         const COOLDOWN_MS = 5 * 60 * 1000; 
 
-        // UPDATED: On Scan Success (With Animated Popup)
         function onScanSuccess(text) {
             const v = getVolunteers().find(x => x.id === text);
             if (v) {
-                // 1. Determine Auto Status
                 const nextStatus = determineNextStatus(v.id);
-                
-                // 2. Check Cooldown
                 const now = new Date();
                 const nowTime = now.getTime();
                 const lastScanKey = `last_scan_${v.id}`;
@@ -660,12 +850,11 @@
                     
                     if (diff < COOLDOWN_MS) {
                         const remainingMinutes = Math.ceil((COOLDOWN_MS - diff) / 60000);
-                        showToast(`Cooldown: Tunggu ${remainingMinutes} menit`, 'error');
+                        Toast.fire({ icon: 'warning', title: `Cooldown: Tunggu ${remainingMinutes} menit` });
                         return; 
                     }
                 }
 
-                // 3. Auto Save
                 localStorage.setItem(lastScanKey, nowTime.toString());
                 addToHistory({ 
                     timestamp: now.toISOString(), 
@@ -677,18 +866,14 @@
                     status: nextStatus 
                 });
 
-                // 4. Show Animated Popup Overlay
                 showScanSuccessOverlay(v, nextStatus, now);
-
-                // 5. Pause Scanner temporarily
                 html5QrcodeScanner.pause();
 
             } else {
-                showToast(`ID ${text} tidak ditemukan`, 'error');
+                Toast.fire({ icon: 'error', title: `ID ${text} tidak ditemukan` });
             }
         }
 
-        // NEW: Animated Popup Logic
         function showScanSuccessOverlay(volunteer, status, date) {
             const overlay = document.getElementById('scan-success-overlay');
             const card = document.getElementById('scan-card');
@@ -697,12 +882,10 @@
             const initLarge = document.getElementById('scan-initials-large');
             const badge = document.getElementById('scan-status-badge');
 
-            // Reset Styles
             card.classList.remove('masuk', 'pulang');
             imgLarge.classList.add('hidden');
             initLarge.classList.add('hidden');
 
-            // Set Status Styles
             if (status === 'Masuk') {
                 card.classList.add('masuk');
                 iconContainer.innerHTML = '<i class="fas fa-check"></i>';
@@ -717,13 +900,11 @@
                 badge.style.color = '#b91c1c';
             }
 
-            // Set Data
             document.getElementById('scan-name-display').textContent = volunteer.name;
             document.getElementById('scan-role-display').textContent = volunteer.role;
             document.getElementById('scan-id-display').textContent = volunteer.id;
             document.getElementById('scan-time-display').textContent = date.toLocaleTimeString('id-ID');
 
-            // Set Photo or Initials
             if (volunteer.photo) {
                 imgLarge.src = volunteer.photo;
                 imgLarge.classList.remove('hidden');
@@ -732,20 +913,16 @@
                 initLarge.classList.remove('hidden');
             }
 
-            // Show Overlay
             overlay.classList.remove('hidden');
 
-            // Auto Hide after 3 seconds
             setTimeout(() => {
                 overlay.classList.add('hidden');
-                // Resume Scanner
                 if (html5QrcodeScanner) {
                     html5QrcodeScanner.resume();
                 }
             }, 3000);
         }
 
-        // --- ROBUST QR GENERATION ---
         function generateQRImage(text) {
             return new Promise((resolve) => {
                 const container = document.createElement('div');
@@ -773,7 +950,6 @@
             });
         }
 
-        // --- QR Popup Logic ---
         async function showQr(id) {
             const v = getVolunteers().find(x => x.id === id);
             if(!v) return;
@@ -786,7 +962,6 @@
             document.getElementById('qr-modal').classList.remove('hidden');
         }
 
-        // --- PRINT CARD LOGIC ---
         function openPrintModal(imgUrl, name, id) {
             document.getElementById('print-card-img').src = imgUrl;
             document.getElementById('print-card-name').textContent = `${name} (${id})`;
@@ -886,19 +1061,19 @@
             const photo = document.getElementById('vol-photo-base64').value;
 
             if (locker && isLockerTaken(locker, index)) {
-                showToast(`Nomor Loker ${locker} sudah digunakan!`, 'error');
+                Toast.fire({ icon: 'error', title: `Nomor Loker ${locker} sudah digunakan!` });
                 return;
             }
 
             let volunteers = getVolunteers();
 
             if (index === -1) {
-                if (volunteers.some(v => v.id === id)) { showToast('ID Sistem error', 'error'); return; }
+                if (volunteers.some(v => v.id === id)) { Toast.fire({ icon: 'error', title: 'ID Sistem error' }); return; }
                 volunteers.push({ id, name, role, locker: locker || '', photo });
-                showToast('Relawan berhasil ditambahkan', 'success');
+                Toast.fire({ icon: 'success', title: 'Relawan berhasil ditambahkan' });
             } else {
                 volunteers[index] = { id, name, role, locker: locker || '', photo };
-                showToast('Data relawan diperbarui', 'success');
+                Toast.fire({ icon: 'success', title: 'Data relawan diperbarui' });
             }
             saveVolunteers(volunteers);
             closeVolunteerModal();
@@ -907,9 +1082,23 @@
 
         function editVolunteer(i) { openVolunteerModal(i); }
         function deleteVolunteer(i) {
-            if(confirm('Hapus data ini?')) {
-                let v = getVolunteers(); v.splice(i, 1); saveVolunteers(v); renderVolunteers(); showToast('Dihapus', 'success');
-            }
+            Swal.fire({
+                title: 'Hapus data ini?',
+                text: "Data yang dihapus tidak dapat dikembalikan!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let v = getVolunteers(); 
+                    v.splice(i, 1); 
+                    saveVolunteers(v); 
+                    renderVolunteers(); 
+                    Toast.fire({ icon: 'success', title: 'Data dihapus' });
+                }
+            })
         }
 
         // --- HISTORY ---
@@ -932,6 +1121,67 @@
             });
         }
 
+        // --- RESET DATA LOGIC (SweetAlert) ---
+        function openResetModal() {
+            Swal.fire({
+                title: '<strong>Reset Data</strong>',
+                icon: 'warning',
+                html:
+                    '<div style="text-align:left; font-size:0.9rem; margin-bottom:15px;">' +
+                    '<label style="display:flex; align-items:center; margin-bottom:8px;"><input type="radio" name="swal-reset" value="all" checked style="margin-right:10px;"> <strong>Semua Data</strong> (Relawan & Riwayat)</label>' +
+                    '<label style="display:flex; align-items:center; margin-bottom:8px;"><input type="radio" name="swal-reset" value="volunteers" style="margin-right:10px;"> <strong>Data Relawan Saja</strong></label>' +
+                    '<label style="display:flex; align-items:center; margin-bottom:8px;"><input type="radio" name="swal-reset" value="history" style="margin-right:10px;"> <strong>Riwayat Saja</strong></label>' +
+                    '</div>' +
+                    '<label style="display:block; text-align:left; font-weight:bold;">Konfirmasi Password Admin:</label>' +
+                    '<input id="swal-input1" class="swal2-input" type="password" placeholder="Password">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Hapus Data',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#3085d6',
+                preConfirm: () => {
+                    const password = document.getElementById('swal-input1').value;
+                    const type = document.querySelector('input[name="swal-reset"]:checked').value;
+                    if (!password) {
+                        Swal.showValidationMessage('Harap masukkan password!')
+                    }
+                    if (password !== 'admin') {
+                        Swal.showValidationMessage('Password salah!')
+                    }
+                    return { password, type }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const { type } = result.value;
+                    Swal.fire({
+                        title: 'Yakin?',
+                        text: `Anda akan menghapus ${type === 'all' ? 'SEMUA DATA' : type.toUpperCase()}. Tindakan ini permanen.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Lanjut Hapus'
+                    }).then((finalResult) => {
+                        if (finalResult.isConfirmed) {
+                            if (type === 'all' || type === 'volunteers') {
+                                localStorage.removeItem(DB_KEY_VOLUNTEERS);
+                            }
+                            if (type === 'all' || type === 'history') {
+                                localStorage.removeItem(DB_KEY_HISTORY);
+                                Object.keys(localStorage).forEach(key => {
+                                    if (key.startsWith('last_scan_')) {
+                                        localStorage.removeItem(key);
+                                    }
+                                });
+                            }
+                            Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success');
+                            renderDatabaseHistory();
+                            renderVolunteers();
+                        }
+                    })
+                }
+            })
+        }
+
         // --- DATABASE ---
         function downloadFullData() {
             const data = { version: APP_VERSION, timestamp: new Date().toISOString(), volunteers: getVolunteers(), history: getHistory() };
@@ -942,28 +1192,41 @@
             document.body.appendChild(a);
             a.click();
             a.remove();
-            showToast('Backup berhasil didownload', 'success');
+            Toast.fire({ icon: 'success', title: 'Backup berhasil didownload' });
         }
         function uploadFullData(input) {
             const f = input.files[0];
             if (!f) return;
-            if(!confirm("Data akan ditimpa. Lanjutkan?")) { input.value = ''; return; }
-            const r = new FileReader();
-            r.onload = function(e) {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    if (json.volunteers && json.history) {
-                        saveVolunteers(json.volunteers);
-                        localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(json.history));
-                        showToast('Database direstore!', 'success');
-                        renderDatabaseHistory();
-                    } else {
-                        showToast('Format file tidak valid!', 'error');
-                    }
-                } catch (err) { showToast('Gagal membaca file JSON', 'error'); }
-                input.value = '';
-            };
-            r.readAsText(f);
+            Swal.fire({
+                title: 'Timpa Data?',
+                text: "Data saat ini akan ditimpa sepenuhnya oleh file backup.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Timpa'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const r = new FileReader();
+                    r.onload = function(e) {
+                        try {
+                            const json = JSON.parse(e.target.result);
+                            if (json.volunteers && json.history) {
+                                saveVolunteers(json.volunteers);
+                                localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(json.history));
+                                Toast.fire({ icon: 'success', title: 'Database direstore!' });
+                                renderDatabaseHistory();
+                            } else {
+                                Toast.fire({ icon: 'error', title: 'Format file tidak valid!' });
+                            }
+                        } catch (err) { Toast.fire({ icon: 'error', title: 'Gagal membaca file JSON' }); }
+                        input.value = '';
+                    };
+                    r.readAsText(f);
+                } else {
+                    input.value = '';
+                }
+            });
         }
         function renderDatabaseHistory() {
             const list = document.getElementById('database-history-list');
@@ -1034,7 +1297,7 @@
                         }
                     }
                 });
-                saveVolunteers(v); renderVolunteers(); showToast(`${count} data diimport`, 'success'); input.value='';
+                saveVolunteers(v); renderVolunteers(); Toast.fire({ icon: 'success', title: `${count} data diimport` }); input.value='';
             };
             r.readAsArrayBuffer(f);
         }
@@ -1081,21 +1344,23 @@
         async function downloadBulkCardsPDF() {
             const volunteers = getVolunteers();
             if (volunteers.length === 0) {
-                showToast('Tidak ada data relawan', 'warning');
+                Toast.fire({ icon: 'warning', title: 'Tidak ada data relawan' });
                 return;
             }
 
-            showToast('Membuat PDF...', 'info');
+            Swal.fire({
+                title: 'Membuat PDF...',
+                text: 'Mohon tunggu sebentar...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            });
 
             const container = document.createElement('div');
             container.style.width = '210mm';
             container.style.margin = '0';
             container.style.padding = '0';
-            
-            // A4 Size: 210mm x 297mm
-            // With 10mm margin: 190mm x 277mm usable
-            // Card: 76mm x 114mm (standard ID card size)
-            // 2 columns x 2.4 rows per page = 2x2 with room for margin
             
             let cardCount = 0;
             let row = null;
@@ -1104,7 +1369,6 @@
                 try {
                     const cardImg = await createCard(volunteer);
                     
-                    // Create row every 2 cards
                     if (cardCount % 2 === 0) {
                         row = document.createElement('div');
                         row.style.display = 'flex';
@@ -1112,7 +1376,6 @@
                         row.style.padding = '5mm';
                         row.style.justifyContent = 'space-around';
                         
-                        // Add page break every 4 cards
                         if (cardCount > 0 && cardCount % 4 === 0) {
                             const pageBreak = document.createElement('div');
                             pageBreak.style.pageBreakAfter = 'always';
@@ -1150,10 +1413,12 @@
             };
             
             html2pdf().set(opt).from(container).save().then(() => {
-                showToast('PDF berhasil dibuat! (' + cardCount + ' kartu)', 'success');
+                Swal.close();
+                Toast.fire({ icon: 'success', title: `PDF berhasil dibuat! (${cardCount} kartu)` });
             }).catch((err) => {
+                Swal.close();
                 console.error('PDF Error:', err);
-                showToast('Gagal membuat PDF', 'error');
+                Toast.fire({ icon: 'error', title: 'Gagal membuat PDF' });
             });
         }
 
@@ -1177,7 +1442,6 @@
             ctx.textAlign = 'center';
             ctx.fillText('KARTU RELAWAN', CARD_WIDTH_PX / 2, 110);
             
-            // Subtitle
             ctx.font = 'bold 24px Arial';
             ctx.fillText('SPPG KURANJI #005', CARD_WIDTH_PX / 2, 150);
 
@@ -1196,7 +1460,6 @@
                 await new Promise(r => img.onload = r);
                 ctx.drawImage(img, photoX, photoY, photoSize, photoSize);
             } else {
-                // Draw Colored Circle
                 ctx.beginPath();
                 const centerX = photoX + photoSize/2;
                 const centerY = photoY + photoSize/2;
@@ -1205,7 +1468,6 @@
                 ctx.fillStyle = '#2563eb';
                 ctx.fill();
 
-                // Draw Initials
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 80px Arial';
                 ctx.textAlign = 'center';
@@ -1275,8 +1537,8 @@
                 wrapper.innerHTML = `
                     <img src="${imgUrl}" class="card-preview-img">
                     <h4>${v.name}</h4>
-                    <p style="color:#6b7280; font-size:0.8rem; margin-bottom:5px;">${v.id}</p>
-                    <p style="color:#9ca3af; font-size:0.75rem;"><i class="fas fa-search-plus"></i> Klik untuk cetak</p>
+                    <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">${v.id}</p>
+                    <p style="color:var(--text-muted); font-size:0.75rem;"><i class="fas fa-search-plus"></i> Klik untuk cetak</p>
                 `;
                 container.appendChild(wrapper);
             });
@@ -1284,13 +1546,9 @@
 
         // --- Init ---
         function initApp() {
+            applyTheme(); 
             renderVolunteers();
             navigateTo('scanner');
-        }
-        function showToast(msg, type) {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.className = `toast show ${type}`;
-            setTimeout(() => t.className = 'toast', 3000);
         }
 
         checkAuth();
