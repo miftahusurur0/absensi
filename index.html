@@ -1862,9 +1862,12 @@ showScanSuccessOverlay(v, nextStatus, now);
             });
         }
 
-        // --- Init ---
-        function initApp() {
+// --- Init ---
+        async function initApp() {
             applyTheme(); 
+            // Fetch data from API first, then render
+            await fetchVolunteersFromAPI();
+            await fetchHistoryFromAPI();
             renderVolunteers();
             navigateTo('scanner');
         }

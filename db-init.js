@@ -14,18 +14,17 @@ async function initializeDatabase() {
   console.log('🔧 Initializing Neon Postgres database...\n');
 
   try {
-    // Create volunteers table
+// Create volunteers table
     console.log('📋 Creating volunteers table...');
     await sql`
       CREATE TABLE IF NOT EXISTS volunteers (
-        id SERIAL PRIMARY KEY,
+        id VARCHAR(50) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255),
         phone VARCHAR(20),
         role VARCHAR(100),
         locker VARCHAR(50),
         qr_code_data TEXT,
-        card_number VARCHAR(50) UNIQUE,
         photo TEXT,
         status VARCHAR(50) DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -34,12 +33,12 @@ async function initializeDatabase() {
     `;
     console.log('✓ volunteers table created');
 
-    // Create history table
+// Create history table
     console.log('📋 Creating history table...');
     await sql`
       CREATE TABLE IF NOT EXISTS history (
         id SERIAL PRIMARY KEY,
-        volunteer_id INTEGER REFERENCES volunteers(id) ON DELETE CASCADE,
+        volunteer_id VARCHAR(50),
         name VARCHAR(255),
         role VARCHAR(100),
         locker VARCHAR(50),

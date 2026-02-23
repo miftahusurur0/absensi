@@ -223,7 +223,7 @@ app.get('/api/volunteers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await sql`
-      SELECT * FROM volunteers WHERE id = ${parseInt(id)};
+      SELECT * FROM volunteers WHERE id = ${id};
     `;
 
     if (result.length === 0) {
@@ -240,7 +240,7 @@ app.get('/api/volunteers/:id', async (req, res) => {
 app.put('/api/volunteers/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+    const { name, email, phone, role, locker, qr_code_data, photo, status } = req.body;
 
     const result = await sql`
       UPDATE volunteers 
@@ -251,11 +251,10 @@ app.put('/api/volunteers/:id', async (req, res) => {
         role = COALESCE(${role || null}, role),
         locker = COALESCE(${locker || null}, locker),
         qr_code_data = COALESCE(${qr_code_data || null}, qr_code_data),
-        card_number = COALESCE(${card_number || null}, card_number),
         photo = COALESCE(${photo || null}, photo),
         status = COALESCE(${status || null}, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${parseInt(id)}
+      WHERE id = ${id}
       RETURNING *;
     `;
 
@@ -265,9 +264,6 @@ app.put('/api/volunteers/:id', async (req, res) => {
 
     res.json({ ok: true, message: 'Volunteer updated successfully', data: result[0] });
   } catch (err) {
-    if (err.message.includes('duplicate key')) {
-      return res.status(400).json({ ok: false, error: 'Card number already exists' });
-    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -277,7 +273,7 @@ app.delete('/api/volunteers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await sql`
-      DELETE FROM volunteers WHERE id = ${parseInt(id)} RETURNING id;
+      DELETE FROM volunteers WHERE id = ${id} RETURNING id;
     `;
 
     if (result.length === 0) {
