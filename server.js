@@ -1,25 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
-const { Client } = require('pg');
+require('dotenv').config({ path: '.env.local' });
+const { neon } = require('@neondatabase/serverless');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-// Supabase Client
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mbqizqdgcxmzpumddhlp.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+// Neon Postgres Client
+const NEON_DATABASE_URL = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL;
 
-if (!SUPABASE_SERVICE_KEY) {
-  console.warn('⚠️ SUPABASE_SERVICE_KEY not set in .env, some features may fail');
+if (!NEON_DATABASE_URL) {
+  console.warn('⚠️ DATABASE_URL not set in .env, database features may fail');
 } else {
-  console.log('✓ Supabase configured');
+  console.log('✓ Neon Postgres configured');
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || '');
+const sql = neon(NEON_DATABASE_URL || '');
 
 // Health Check - Serve index.html for root path
 app.get('/', (req, res) => {
@@ -31,105 +29,88 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     message: 'Absensi Relawan API Server Running',
-    version: '1.0.0',
+    version: '2.0.0',
+    database: 'Neon Postgres',
     endpoints: {
-      health: 'GET /',
-      api_health: 'GET /api/health',
+      health: 'GET /api/health',
+      db_test: 'GET /api/db-test',
       volunteers_count: 'GET /api/volunteers-count',
       history_count: 'GET /api/history-count',
-      pg_test: 'GET /api/pg-test',
-      volunteers: 'GET /api/volunteers',
-      history: 'GET /api/history'
+      volunteers_list: 'GET /api/volunteers',
+      volunteer_get: 'GET /api/volunteers/:id',
+      volunteer_create: 'POST /api/volunteers',
+      volunteer_update: 'PUT /api/volunteers/:id',
+      volunteer_delete: 'DELETE /api/volunteers/:id',
+      history_list: 'GET /api/history',
+      history_create: 'POST /api/history'
     }
   });
 });
 
-// Test PG Connection (Direct PostgreSQL)
-app.get('/api/pg-test', async (req, res) => {
-  const PG_CONNECTION = process.env.PG_CONNECTION;
-  if (!PG_CONNECTION) {
-    return res.status(400).json({ ok: false, error: 'PG_CONNECTION not set in .env' });
+// Test Database Connection
+app.get('/api/db-test', async (req, res) => {
+  if (!NEON_DATABASE_URL) {
+    return res.status(400).json({ ok: false, error: 'DATABASE_URL not set in .env' });
   }
 
-  const client = new Client({ connectionString: PG_CONNECTION });
   try {
-    await client.connect();
-    const result = await client.query('SELECT NOW() as current_time, 1 as ok;');
-    await client.end();
-    res.json({ ok: true, message: 'PostgreSQL connection successful', data: result.rows[0] });
+    const result = await sql`SELECT NOW() as current_time, 1 as ok;`;
+    res.json({ ok: true, message: 'Neon Postgres connection successful', data: result[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Get Volunteers Count (Supabase)
+// Get Volunteers Count (Neon)
 app.get('/api/volunteers-count', async (req, res) => {
   try {
-    const { count, error } = await supabase
-      .from('volunteers')
-      .select('id', { count: 'exact', head: true });
-
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
-    }
-    res.json({ ok: true, count: count || 0 });
+    const result = await sql`SELECT COUNT(*) as count FROM volunteers;`;
+    const count = parseInt(result[0].count) || 0;
+    res.json({ ok: true, count: count });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Get History Count (Supabase)
+// Get History Count (Neon)
 app.get('/api/history-count', async (req, res) => {
   try {
-    const { count, error } = await supabase
-      .from('history')
-      .select('id', { count: 'exact', head: true });
-
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
-    }
-    res.json({ ok: true, count: count || 0 });
+    const result = await sql`SELECT COUNT(*) as count FROM history;`;
+    const count = parseInt(result[0].count) || 0;
+    res.json({ ok: true, count: count });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Get All Volunteers (Supabase)
+// Get All Volunteers (Neon)
 app.get('/api/volunteers', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('volunteers')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
-    }
+    const data = await sql`
+      SELECT * FROM volunteers 
+      ORDER BY created_at DESC;
+    `;
     res.json({ ok: true, data: data || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Get All History (Supabase)
+// Get All History (Neon)
 app.get('/api/history', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('history')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(100);
-
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
-    }
+    const data = await sql`
+      SELECT * FROM history 
+      ORDER BY timestamp DESC 
+      LIMIT 100;
+    `;
     res.json({ ok: true, data: data || [] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Add History Entry (Supabase)
+// Add History Entry (Neon)
 app.post('/api/history', async (req, res) => {
   try {
     const { volunteerId, name, role, locker, photo, status, timestamp } = req.body;
@@ -138,29 +119,115 @@ app.post('/api/history', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'volunteerId and status required' });
     }
 
-    const { data, error } = await supabase
-      .from('history')
-      .insert([{
-        volunteerId,
-        name,
-        role,
-        locker,
-        photo,
-        status,
-        timestamp: timestamp || new Date().toISOString()
-      }])
-      .select();
+    const result = await sql`
+      INSERT INTO history (volunteer_id, name, role, locker, photo, status, timestamp)
+      VALUES (${volunteerId}, ${name || null}, ${role || null}, ${locker || null}, ${photo || null}, ${status}, ${timestamp || new Date().toISOString()})
+      RETURNING *;
+    `;
 
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
-    }
-    res.json({ ok: true, data: data[0] });
+    res.json({ ok: true, data: result[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Error Handler
+// Add/Create Volunteer (Neon)
+app.post('/api/volunteers', async (req, res) => {
+  try {
+    const { name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ ok: false, error: 'name is required' });
+    }
+
+    const result = await sql`
+      INSERT INTO volunteers (name, email, phone, role, locker, qr_code_data, card_number, photo, status)
+      VALUES (${name}, ${email || null}, ${phone || null}, ${role || null}, ${locker || null}, ${qr_code_data || null}, ${card_number || null}, ${photo || null}, ${status || 'active'})
+      RETURNING *;
+    `;
+
+    res.json({ ok: true, message: 'Volunteer created successfully', data: result[0] });
+  } catch (err) {
+    if (err.message.includes('duplicate key')) {
+      return res.status(400).json({ ok: false, error: 'Card number already exists' });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Get Volunteer by ID (Neon)
+app.get('/api/volunteers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await sql`
+      SELECT * FROM volunteers WHERE id = ${parseInt(id)};
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Volunteer not found' });
+    }
+
+    res.json({ ok: true, data: result[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Update Volunteer (Neon)
+app.put('/api/volunteers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+
+    const result = await sql`
+      UPDATE volunteers 
+      SET 
+        name = COALESCE(${name || null}, name),
+        email = COALESCE(${email || null}, email),
+        phone = COALESCE(${phone || null}, phone),
+        role = COALESCE(${role || null}, role),
+        locker = COALESCE(${locker || null}, locker),
+        qr_code_data = COALESCE(${qr_code_data || null}, qr_code_data),
+        card_number = COALESCE(${card_number || null}, card_number),
+        photo = COALESCE(${photo || null}, photo),
+        status = COALESCE(${status || null}, status),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${parseInt(id)}
+      RETURNING *;
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Volunteer not found' });
+    }
+
+    res.json({ ok: true, message: 'Volunteer updated successfully', data: result[0] });
+  } catch (err) {
+    if (err.message.includes('duplicate key')) {
+      return res.status(400).json({ ok: false, error: 'Card number already exists' });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Delete Volunteer (Neon)
+app.delete('/api/volunteers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await sql`
+      DELETE FROM volunteers WHERE id = ${parseInt(id)} RETURNING id;
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Volunteer not found' });
+    }
+
+    res.json({ ok: true, message: 'Volunteer deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ ok: false, error: err.message });
@@ -171,10 +238,17 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Absensi Relawan Server running on http://localhost:${PORT}`);
   console.log(`\n📍 Available endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/`);
+  console.log(`   GET  http://localhost:${PORT}/api/health`);
+  console.log(`   GET  http://localhost:${PORT}/api/db-test`);
+  console.log(`\n📊 Volunteers Endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/api/volunteers-count`);
-  console.log(`   GET  http://localhost:${PORT}/api/history-count`);
-  console.log(`   GET  http://localhost:${PORT}/api/pg-test`);
   console.log(`   GET  http://localhost:${PORT}/api/volunteers`);
+  console.log(`   GET  http://localhost:${PORT}/api/volunteers/:id`);
+  console.log(`   POST http://localhost:${PORT}/api/volunteers`);
+  console.log(`   PUT  http://localhost:${PORT}/api/volunteers/:id`);
+  console.log(`   DELETE http://localhost:${PORT}/api/volunteers/:id`);
+  console.log(`\n📋 History Endpoints:`);
+  console.log(`   GET  http://localhost:${PORT}/api/history-count`);
   console.log(`   GET  http://localhost:${PORT}/api/history`);
   console.log(`   POST http://localhost:${PORT}/api/history\n`);
 });

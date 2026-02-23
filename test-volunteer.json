@@ -1,0 +1,10 @@
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "081234567890",
+  "role": "Koordinator",
+  "locker": "A-01",
+  "qr_code_data": "VOLUNTEER_001",
+  "card_number": "CARD-001",
+  "status": "active"
+}
