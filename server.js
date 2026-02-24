@@ -432,21 +432,38 @@ app.get('/api/volunteers/:id', async (req, res) => {
 app.put('/api/volunteers/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, role, locker, qr_code_data, photo, status } = req.body;
+    let { name, email, phone, role, locker, qr_code_data, photo, status } = req.body;
+
+    // Validate id parameter
+    if (!id || id === 'null' || id === 'undefined') {
+      return res.status(400).json({ ok: false, error: 'Invalid volunteer ID' });
+    }
+
+    const paramId = String(id).trim();
+
+    // Sanitize optional fields - same as POST endpoint
+    name = (name && name !== 'null' && name !== 'undefined') ? String(name).trim() : null;
+    email = (email && email !== 'null' && email !== 'undefined') ? String(email).trim() : null;
+    phone = (phone && phone !== 'null' && phone !== 'undefined') ? String(phone).trim() : null;
+    role = (role && role !== 'null' && role !== 'undefined') ? String(role).trim() : null;
+    locker = (locker && locker !== 'null' && locker !== 'undefined') ? String(locker).trim() : null;
+    qr_code_data = (qr_code_data && qr_code_data !== 'null' && qr_code_data !== 'undefined') ? String(qr_code_data).trim() : null;
+    photo = (photo && photo !== 'null' && photo !== 'undefined') ? String(photo).trim() : null;
+    status = (status && status !== 'null' && status !== 'undefined') ? String(status).trim() : null;
 
     const result = await sql`
       UPDATE volunteers 
       SET 
-        name = COALESCE(${name || null}, name),
-        email = COALESCE(${email || null}, email),
-        phone = COALESCE(${phone || null}, phone),
-        role = COALESCE(${role || null}, role),
-        locker = COALESCE(${locker || null}, locker),
-        qr_code_data = COALESCE(${qr_code_data || null}, qr_code_data),
-        photo = COALESCE(${photo || null}, photo),
-        status = COALESCE(${status || null}, status),
+        name = COALESCE(NULLIF(${name}, ''), name),
+        email = COALESCE(NULLIF(${email}, ''), email),
+        phone = COALESCE(NULLIF(${phone}, ''), phone),
+        role = COALESCE(NULLIF(${role}, ''), role),
+        locker = COALESCE(NULLIF(${locker}, ''), locker),
+        qr_code_data = COALESCE(NULLIF(${qr_code_data}, ''), qr_code_data),
+        photo = COALESCE(NULLIF(${photo}, ''), photo),
+        status = COALESCE(NULLIF(${status}, ''), status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
+      WHERE id = ${paramId}
       RETURNING *;
     `;
 
@@ -456,6 +473,10 @@ app.put('/api/volunteers/:id', async (req, res) => {
 
     res.json({ ok: true, message: 'Volunteer updated successfully', data: result[0] });
   } catch (err) {
+    console.error('Error updating volunteer:', err);
+    if (err.message.includes('invalid input syntax')) {
+      return res.status(400).json({ ok: false, error: 'Format data tidak valid' });
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
