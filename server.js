@@ -177,20 +177,39 @@ app.get('/api/history', async (req, res) => {
 // Add History Entry (Neon)
 app.post('/api/history', async (req, res) => {
   try {
-    const { volunteerId, name, role, locker, photo, status, timestamp } = req.body;
+    let { volunteerId, name, role, locker, photo, status, timestamp } = req.body;
 
-    if (!volunteerId || !status) {
-      return res.status(400).json({ ok: false, error: 'volunteerId and status required' });
+    // Validate required fields
+    if (!volunteerId || !status || volunteerId === 'null' || volunteerId === 'undefined' || status === 'null' || status === 'undefined') {
+      return res.status(400).json({ ok: false, error: 'volunteerId and status are required and must be valid' });
+    }
+
+    // Sanitize and convert to string
+    volunteerId = String(volunteerId).trim();
+    status = String(status).trim();
+    name = (name && name !== 'null' && name !== 'undefined') ? String(name).trim() : null;
+    role = (role && role !== 'null' && role !== 'undefined') ? String(role).trim() : null;
+    locker = (locker && locker !== 'null' && locker !== 'undefined') ? String(locker).trim() : null;
+    photo = (photo && photo !== 'null' && photo !== 'undefined') ? String(photo).trim() : null;
+    timestamp = (timestamp && timestamp !== 'null' && timestamp !== 'undefined') ? String(timestamp).trim() : new Date().toISOString();
+
+    // Validate volunteerId length
+    if (volunteerId.length > 50) {
+      return res.status(400).json({ ok: false, error: 'ID terlalu panjang' });
     }
 
     const result = await sql`
       INSERT INTO history (volunteer_id, name, role, locker, photo, status, timestamp)
-      VALUES (${volunteerId}, ${name || null}, ${role || null}, ${locker || null}, ${photo || null}, ${status}, ${timestamp || new Date().toISOString()})
+      VALUES (${volunteerId}, ${name}, ${role}, ${locker}, ${photo}, ${status}, ${timestamp})
       RETURNING *;
     `;
 
     res.json({ ok: true, data: result[0] });
   } catch (err) {
+    console.error('Error adding history:', err);
+    if (err.message.includes('invalid input syntax')) {
+      return res.status(400).json({ ok: false, error: 'Format data tidak valid' });
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -198,22 +217,51 @@ app.post('/api/history', async (req, res) => {
 // Add/Create Volunteer (Neon)
 app.post('/api/volunteers', async (req, res) => {
   try {
-    const { id, name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+    let { id, name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
 
-    if (!id || !name) {
-      return res.status(400).json({ ok: false, error: 'id and name are required' });
+    // Validate required fields
+    if (!id || !name || id === 'null' || id === 'undefined' || name === 'null' || name === 'undefined') {
+      return res.status(400).json({ ok: false, error: 'id and name are required and must be valid' });
+    }
+
+    // Ensure id is a string and clean
+    id = String(id).trim();
+    name = String(name).trim();
+    
+    // Sanitize optional fields - convert undefined/empty string to null
+    email = (email && email !== 'null' && email !== 'undefined') ? String(email).trim() : null;
+    phone = (phone && phone !== 'null' && phone !== 'undefined') ? String(phone).trim() : null;
+    role = (role && role !== 'null' && role !== 'undefined') ? String(role).trim() : null;
+    locker = (locker && locker !== 'null' && locker !== 'undefined') ? String(locker).trim() : null;
+    qr_code_data = (qr_code_data && qr_code_data !== 'null' && qr_code_data !== 'undefined') ? String(qr_code_data).trim() : null;
+    card_number = (card_number && card_number !== 'null' && card_number !== 'undefined') ? String(card_number).trim() : null;
+    photo = (photo && photo !== 'null' && photo !== 'undefined') ? String(photo).trim() : null;
+    status = (status && status !== 'null' && status !== 'undefined') ? String(status).trim() : 'active';
+
+    // Validate id length (max 50 chars for VARCHAR(50))
+    if (id.length > 50) {
+      return res.status(400).json({ ok: false, error: 'ID terlalu panjang (maksimal 50 karakter)' });
+    }
+
+    // Validate name length
+    if (name.length > 255) {
+      return res.status(400).json({ ok: false, error: 'Nama terlalu panjang (maksimal 255 karakter)' });
     }
 
     const result = await sql`
       INSERT INTO volunteers (id, name, email, phone, role, locker, qr_code_data, card_number, photo, status)
-      VALUES (${id}, ${name}, ${email || null}, ${phone || null}, ${role || null}, ${locker || null}, ${qr_code_data || null}, ${card_number || null}, ${photo || null}, ${status || 'active'})
+      VALUES (${id}, ${name}, ${email}, ${phone}, ${role}, ${locker}, ${qr_code_data}, ${card_number}, ${photo}, ${status})
       RETURNING *;
     `;
 
     res.json({ ok: true, message: 'Volunteer created successfully', data: result[0] });
   } catch (err) {
-    if (err.message.includes('duplicate key')) {
-      return res.status(400).json({ ok: false, error: 'ID or card number already exists' });
+    console.error('Error creating volunteer:', err);
+    if (err.message.includes('duplicate key') || err.message.includes('unique')) {
+      return res.status(400).json({ ok: false, error: 'ID atau nomor kartu sudah terdaftar' });
+    }
+    if (err.message.includes('invalid input syntax')) {
+      return res.status(400).json({ ok: false, error: 'Format data tidak valid. Periksa kembali input Anda.' });
     }
     res.status(500).json({ ok: false, error: err.message });
   }
