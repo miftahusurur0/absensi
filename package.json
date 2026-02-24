@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "db:init": "node db-init.js"
+    "db:init": "node db-init.js",
+    "db:fix": "node fix-db.js",
+    "test:smoke": "node smoke-test.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

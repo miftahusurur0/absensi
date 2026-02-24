@@ -25,6 +25,7 @@ async function initializeDatabase() {
         role VARCHAR(100),
         locker VARCHAR(50),
         qr_code_data TEXT,
+        card_number VARCHAR(50) UNIQUE,
         photo TEXT,
         status VARCHAR(50) DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -32,6 +33,12 @@ async function initializeDatabase() {
       );
     `;
     console.log('✓ volunteers table created');
+
+    // Ensure newly introduced column exists for older deployments
+    await sql`
+      ALTER TABLE volunteers
+      ADD COLUMN IF NOT EXISTS card_number VARCHAR(50);
+    `;
 
 // Create history table
     console.log('📋 Creating history table...');

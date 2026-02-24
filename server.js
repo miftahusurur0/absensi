@@ -5,7 +5,7 @@ const { neon } = require('@neondatabase/serverless');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('.'));
 
 // Neon Postgres Client
@@ -37,6 +37,7 @@ app.get('/api/health', (req, res) => {
       volunteers_count: 'GET /api/volunteers-count',
       history_count: 'GET /api/history-count',
       volunteers_list: 'GET /api/volunteers',
+      volunteers_bulk_import: 'POST /api/volunteers/bulk',
       volunteer_get: 'GET /api/volunteers/:id',
       volunteer_create: 'POST /api/volunteers',
       volunteer_update: 'PUT /api/volunteers/:id',
@@ -197,23 +198,166 @@ app.post('/api/history', async (req, res) => {
 // Add/Create Volunteer (Neon)
 app.post('/api/volunteers', async (req, res) => {
   try {
-    const { name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+    const { id, name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ ok: false, error: 'name is required' });
+    if (!id || !name) {
+      return res.status(400).json({ ok: false, error: 'id and name are required' });
     }
 
     const result = await sql`
-      INSERT INTO volunteers (name, email, phone, role, locker, qr_code_data, card_number, photo, status)
-      VALUES (${name}, ${email || null}, ${phone || null}, ${role || null}, ${locker || null}, ${qr_code_data || null}, ${card_number || null}, ${photo || null}, ${status || 'active'})
+      INSERT INTO volunteers (id, name, email, phone, role, locker, qr_code_data, card_number, photo, status)
+      VALUES (${id}, ${name}, ${email || null}, ${phone || null}, ${role || null}, ${locker || null}, ${qr_code_data || null}, ${card_number || null}, ${photo || null}, ${status || 'active'})
       RETURNING *;
     `;
 
     res.json({ ok: true, message: 'Volunteer created successfully', data: result[0] });
   } catch (err) {
     if (err.message.includes('duplicate key')) {
-      return res.status(400).json({ ok: false, error: 'Card number already exists' });
+      return res.status(400).json({ ok: false, error: 'ID or card number already exists' });
     }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Bulk Import Volunteers (Neon)
+app.post('/api/volunteers/bulk', async (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body?.volunteers) ? req.body.volunteers : [];
+
+    if (incoming.length === 0) {
+      return res.status(400).json({ ok: false, error: 'volunteers array is required' });
+    }
+
+    if (incoming.length > 5000) {
+      return res.status(400).json({ ok: false, error: 'Too many rows. Maximum 5000 per request' });
+    }
+
+    const normalized = incoming
+      .map((v) => ({
+        id: String(v?.id || '').trim(),
+        name: String(v?.name || '').trim(),
+        email: v?.email || null,
+        phone: v?.phone || null,
+        role: v?.role || null,
+        locker: v?.locker ? String(v.locker) : null,
+        qr_code_data: v?.qr_code_data || null,
+        card_number: v?.card_number || null,
+        photo: v?.photo || null,
+        status: v?.status || 'active'
+      }))
+      .filter((v) => v.id && v.name);
+
+    if (normalized.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No valid rows (id and name are required)' });
+    }
+
+    const payload = JSON.stringify(normalized);
+
+    try {
+      const result = await sql`
+        WITH src AS (
+          SELECT *
+          FROM jsonb_to_recordset(${payload}::jsonb) AS x(
+            id text,
+            name text,
+            email text,
+            phone text,
+            role text,
+            locker text,
+            qr_code_data text,
+            card_number text,
+            photo text,
+            status text
+          )
+        )
+        INSERT INTO volunteers (id, name, email, phone, role, locker, qr_code_data, card_number, photo, status)
+        SELECT
+          id,
+          name,
+          NULLIF(email, ''),
+          NULLIF(phone, ''),
+          NULLIF(role, ''),
+          NULLIF(locker, ''),
+          NULLIF(qr_code_data, ''),
+          NULLIF(card_number, ''),
+          NULLIF(photo, ''),
+          COALESCE(NULLIF(status, ''), 'active')
+        FROM src
+        ON CONFLICT (id)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          locker = EXCLUDED.locker,
+          qr_code_data = EXCLUDED.qr_code_data,
+          card_number = EXCLUDED.card_number,
+          photo = EXCLUDED.photo,
+          status = EXCLUDED.status,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING id;
+      `;
+
+      return res.json({
+        ok: true,
+        mode: 'batch',
+        requested: incoming.length,
+        valid: normalized.length,
+        upserted: result.length,
+        failed: 0,
+        errors: []
+      });
+    } catch (batchErr) {
+      const errors = [];
+      let upserted = 0;
+
+      for (const row of normalized) {
+        try {
+          const rowResult = await sql`
+            INSERT INTO volunteers (id, name, email, phone, role, locker, qr_code_data, card_number, photo, status)
+            VALUES (
+              ${row.id},
+              ${row.name},
+              ${row.email},
+              ${row.phone},
+              ${row.role},
+              ${row.locker},
+              ${row.qr_code_data},
+              ${row.card_number},
+              ${row.photo},
+              ${row.status}
+            )
+            ON CONFLICT (id)
+            DO UPDATE SET
+              name = EXCLUDED.name,
+              email = EXCLUDED.email,
+              phone = EXCLUDED.phone,
+              role = EXCLUDED.role,
+              locker = EXCLUDED.locker,
+              qr_code_data = EXCLUDED.qr_code_data,
+              card_number = EXCLUDED.card_number,
+              photo = EXCLUDED.photo,
+              status = EXCLUDED.status,
+              updated_at = CURRENT_TIMESTAMP
+            RETURNING id;
+          `;
+          if (rowResult.length > 0) upserted++;
+        } catch (rowErr) {
+          errors.push({ id: row.id, error: rowErr.message });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        mode: 'fallback-row-by-row',
+        requested: incoming.length,
+        valid: normalized.length,
+        upserted,
+        failed: errors.length,
+        errors
+      });
+    }
+  } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -292,22 +436,26 @@ app.use((err, req, res, next) => {
   res.status(500).json({ ok: false, error: err.message });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`\n🚀 Absensi Relawan Server running on http://localhost:${PORT}`);
-  console.log(`\n📍 Available endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/`);
-  console.log(`   GET  http://localhost:${PORT}/api/health`);
-  console.log(`   GET  http://localhost:${PORT}/api/db-test`);
-  console.log(`\n📊 Volunteers Endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/api/volunteers-count`);
-  console.log(`   GET  http://localhost:${PORT}/api/volunteers`);
-  console.log(`   GET  http://localhost:${PORT}/api/volunteers/:id`);
-  console.log(`   POST http://localhost:${PORT}/api/volunteers`);
-  console.log(`   PUT  http://localhost:${PORT}/api/volunteers/:id`);
-  console.log(`   DELETE http://localhost:${PORT}/api/volunteers/:id`);
-  console.log(`\n📋 History Endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/api/history-count`);
-  console.log(`   GET  http://localhost:${PORT}/api/history`);
-  console.log(`   POST http://localhost:${PORT}/api/history\n`);
-});
+module.exports = app;
+
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`\nAbsensi Relawan Server running on http://localhost:${PORT}`);
+    console.log(`\nAvailable endpoints:`);
+    console.log(`   GET  http://localhost:${PORT}/`);
+    console.log(`   GET  http://localhost:${PORT}/api/health`);
+    console.log(`   GET  http://localhost:${PORT}/api/db-test`);
+    console.log(`\nVolunteers Endpoints:`);
+    console.log(`   GET  http://localhost:${PORT}/api/volunteers-count`);
+    console.log(`   GET  http://localhost:${PORT}/api/volunteers`);
+    console.log(`   GET  http://localhost:${PORT}/api/volunteers/:id`);
+    console.log(`   POST http://localhost:${PORT}/api/volunteers`);
+    console.log(`   PUT  http://localhost:${PORT}/api/volunteers/:id`);
+    console.log(`   DELETE http://localhost:${PORT}/api/volunteers/:id`);
+    console.log(`\nHistory Endpoints:`);
+    console.log(`   GET  http://localhost:${PORT}/api/history-count`);
+    console.log(`   GET  http://localhost:${PORT}/api/history`);
+    console.log(`   POST http://localhost:${PORT}/api/history\n`);
+  });
+}

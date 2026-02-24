@@ -48,6 +48,23 @@
             --header-bg: rgba(255, 255, 255, 0.9);
             --input-bg: #ffffff;
             --login-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            --btn-primary-bg: #2563eb;
+            --btn-primary-hover: #1d4ed8;
+            --btn-primary-active: #1e40af;
+            --btn-primary-text: #ffffff;
+            --btn-success-bg: #16a34a;
+            --btn-success-hover: #15803d;
+            --btn-success-active: #166534;
+            --btn-success-text: #ffffff;
+            --btn-danger-bg: #dc2626;
+            --btn-danger-hover: #b91c1c;
+            --btn-danger-active: #991b1b;
+            --btn-danger-text: #ffffff;
+            --btn-outline-border: #2563eb;
+            --btn-outline-text: #1d4ed8;
+            --btn-outline-hover-bg: rgba(37, 99, 235, 0.1);
+            --btn-icon-bg: rgba(15, 23, 42, 0.08);
+            --btn-icon-bg-strong: rgba(15, 23, 42, 0.14);
         }
 
         [data-theme="dark"] {
@@ -63,6 +80,20 @@
             --header-bg: rgba(31, 41, 55, 0.9);
             --input-bg: #374151;
             --login-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            --btn-primary-bg: #3b82f6;
+            --btn-primary-hover: #60a5fa;
+            --btn-primary-active: #2563eb;
+            --btn-success-bg: #22c55e;
+            --btn-success-hover: #4ade80;
+            --btn-success-active: #16a34a;
+            --btn-danger-bg: #ef4444;
+            --btn-danger-hover: #f87171;
+            --btn-danger-active: #dc2626;
+            --btn-outline-border: #60a5fa;
+            --btn-outline-text: #93c5fd;
+            --btn-outline-hover-bg: rgba(147, 197, 253, 0.12);
+            --btn-icon-bg: rgba(255, 255, 255, 0.08);
+            --btn-icon-bg-strong: rgba(255, 255, 255, 0.16);
         }
 
         /* --- Global Reset & Base --- */
@@ -71,15 +102,87 @@
         .hidden { display: none !important; }
         
         /* --- Buttons --- */
-        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; text-decoration: none; touch-action: manipulation; }
-        .btn-primary { background-color: var(--primary); color: #fff; box-shadow: 0 2px 4px rgba(37,99,235,0.3); }
-        .btn-primary:active { background-color: var(--secondary); transform: translateY(1px); }
-        .btn-success { background-color: var(--success); color: #fff; }
-        .btn-danger { background-color: var(--danger); color: #fff; }
-        .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            text-decoration: none;
+            touch-action: manipulation;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+        .btn::after {
+            content: "";
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            left: 50%;
+            top: 50%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .btn:active::after {
+            animation: tapRipple 0.35s ease-out;
+        }
+        .btn:active {
+            transform: translateY(1px) scale(0.985);
+        }
+        .btn:focus-visible {
+            outline: 2px solid var(--secondary);
+            outline-offset: 2px;
+        }
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            box-shadow: 0 8px 16px -10px rgba(37, 99, 235, 0.75);
+        }
+        .btn-success {
+            background-color: var(--btn-success-bg);
+            color: var(--btn-success-text);
+            box-shadow: 0 8px 16px -10px rgba(22, 163, 74, 0.8);
+        }
+        .btn-danger {
+            background-color: var(--btn-danger-bg);
+            color: var(--btn-danger-text);
+            box-shadow: 0 8px 16px -10px rgba(220, 38, 38, 0.85);
+        }
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--btn-outline-border);
+            color: var(--btn-outline-text);
+        }
         .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
         .btn-full { width: 100%; justify-content: flex-start; margin-bottom: 10px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
         .btn-full:hover { background: var(--bg-color); }
+
+        @media (hover: hover) {
+            .btn-primary:hover { background-color: var(--btn-primary-hover); }
+            .btn-success:hover { background-color: var(--btn-success-hover); }
+            .btn-danger:hover { background-color: var(--btn-danger-hover); }
+            .btn-outline:hover { background-color: var(--btn-outline-hover-bg); }
+            .btn:hover { transform: translateY(-1px); }
+        }
+
+        @media (hover: none) {
+            .btn { min-height: 44px; }
+            .btn:active {
+                transform: scale(0.97);
+                transition-duration: 0.08s;
+            }
+        }
 
         /* --- Login Page (Tech Theme) --- */
         #login-page { 
@@ -174,15 +277,25 @@
             height: 30px;
             border-radius: 6px;
             margin-right: 8px;
-            background: rgba(0,0,0,0.06);
-            color: var(--primary);
+            background: var(--btn-icon-bg);
+            color: currentColor;
             flex-shrink: 0;
         }
 
         /* Dark theme adjustments for icon backgrounds */
         [data-theme="dark"] .btn i, [data-theme="dark"] .mobile-menu-section i, [data-theme="dark"] .theme-btn i {
-            background: rgba(255,255,255,0.04);
-            color: var(--secondary);
+            background: var(--btn-icon-bg);
+            color: currentColor;
+        }
+
+        .btn-primary i, .btn-success i, .btn-danger i {
+            background: rgba(255, 255, 255, 0.2);
+            color: currentColor;
+        }
+
+        .btn-outline i, .btn-full i {
+            background: var(--btn-icon-bg-strong);
+            color: currentColor;
         }
 
         /* Tweak modal content for volunteer form for better spacing and separation */
@@ -204,6 +317,12 @@
         .nav-buttons { display: flex; gap: 8px; }
         .nav-buttons .btn { padding: 10px 16px; font-size: 0.85rem; white-space: nowrap; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); }
         .nav-buttons .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .nav-buttons .btn.btn-nav-success { border-color: var(--btn-success-bg); color: var(--btn-success-bg); }
+        .nav-buttons .btn.btn-nav-warning { border-color: var(--warning); color: var(--warning); }
+        .nav-buttons .btn.btn-nav-danger { border-color: var(--btn-danger-bg); color: var(--btn-danger-bg); }
+        .nav-buttons .btn.btn-nav-success:hover { border-color: var(--btn-success-hover); color: var(--btn-success-hover); }
+        .nav-buttons .btn.btn-nav-warning:hover { border-color: var(--warning); color: var(--warning); filter: brightness(1.06); }
+        .nav-buttons .btn.btn-nav-danger:hover { border-color: var(--btn-danger-hover); color: var(--btn-danger-hover); }
 
         /* Theme Toggle */
         .theme-toggle { display: flex; gap: 5px; background: var(--bg-color); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); }
@@ -233,6 +352,9 @@
 
         .mobile-menu-section { margin-bottom: 20px; }
         .mobile-menu-section h4 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 1px; }
+        .btn-full-success { border-color: var(--btn-success-bg); color: var(--btn-success-bg); }
+        .btn-full-warning { border-color: var(--warning); color: var(--warning); }
+        .btn-full-danger { border-color: var(--btn-danger-bg); color: var(--btn-danger-bg); }
 
         /* Main Content */
         main { flex: 1; padding: 1rem; overflow-y: auto; max-width: 1200px; margin: 0 auto; width: 100%; -webkit-overflow-scrolling: touch; }
@@ -274,6 +396,10 @@
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes slideInLeft { from { transform: translateX(-50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes tapRipple {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0.35; }
+            100% { transform: translate(-50%, -50%) scale(20); opacity: 0; }
+        }
 
         /* --- Scan Success Overlay --- */
         #scan-success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
@@ -476,9 +602,9 @@
                     <button class="btn" onclick="navigateTo('scanner')"><i class="fas fa-camera"></i> <span>Scan</span></button>
                     <button class="btn" onclick="navigateTo('history')"><i class="fas fa-history"></i> <span>Riwayat</span></button>
                     <button class="btn" onclick="navigateTo('volunteers')"><i class="fas fa-users"></i> <span>Relawan</span></button>
-                    <button class="btn" style="border-color: var(--success); color: var(--success);" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
-                    <button class="btn" style="border-color: var(--warning); color: var(--warning);" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
-                    <button class="btn" style="border-color: var(--danger); color: var(--danger);" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+                    <button class="btn btn-nav-success" onclick="navigateTo('cards')"><i class="fas fa-id-card"></i> <span>Kartu</span></button>
+                    <button class="btn btn-nav-warning" onclick="navigateTo('database')"><i class="fas fa-database"></i> <span>DB</span></button>
+                    <button class="btn btn-nav-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
 
                 <div class="theme-toggle">
@@ -503,11 +629,11 @@
 
             <div class="mobile-menu-section">
                 <h4>Navigasi</h4>
-                <button class="btn btn-full" onclick="mobileNavigate('scanner')"><i class="fas fa-camera" style="width:20px; color:var(--primary);"></i> Scan QR Code</button>
-                <button class="btn btn-full" onclick="mobileNavigate('history')"><i class="fas fa-history" style="width:20px; color:var(--primary);"></i> Riwayat Absensi</button>
-                <button class="btn btn-full" onclick="mobileNavigate('volunteers')"><i class="fas fa-users" style="width:20px; color:var(--primary);"></i> Data Relawan</button>
-                <button class="btn btn-full" onclick="mobileNavigate('cards')"><i class="fas fa-id-card" style="width:20px; color:var(--success);"></i> Kartu ID</button>
-                <button class="btn btn-full" onclick="mobileNavigate('database')"><i class="fas fa-database" style="width:20px; color:var(--warning);"></i> Database</button>
+                <button class="btn btn-full" onclick="mobileNavigate('scanner')"><i class="fas fa-camera"></i> Scan QR Code</button>
+                <button class="btn btn-full" onclick="mobileNavigate('history')"><i class="fas fa-history"></i> Riwayat Absensi</button>
+                <button class="btn btn-full" onclick="mobileNavigate('volunteers')"><i class="fas fa-users"></i> Data Relawan</button>
+                <button class="btn btn-full btn-full-success" onclick="mobileNavigate('cards')"><i class="fas fa-id-card"></i> Kartu ID</button>
+                <button class="btn btn-full btn-full-warning" onclick="mobileNavigate('database')"><i class="fas fa-database"></i> Database</button>
             </div>
 
             <div class="mobile-menu-section">
@@ -520,7 +646,7 @@
             </div>
 
             <div class="mobile-menu-section" style="margin-top: auto;">
-                <button class="btn btn-full" style="border-color: var(--danger); color: var(--danger);" onclick="logout()"><i class="fas fa-sign-out-alt" style="width:20px;"></i> Keluar Aplikasi</button>
+                <button class="btn btn-full btn-full-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar Aplikasi</button>
             </div>
         </div>
 
@@ -752,10 +878,16 @@
         const APP_VERSION = "7.7";
         const DB_KEY_VOLUNTEERS = 'absensi_volunteers_v77';
         const DB_KEY_HISTORY = 'absensi_history_v77';
+        const DB_KEY_PENDING_HISTORY = 'absensi_pending_history_v77';
         const SESSION_KEY = 'absensi_admin_session';
+        const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
         
         let html5QrcodeScanner = null;
         let isScanning = false;
+        let inactivityTimer = null;
+        let inactivityTrackingBound = false;
+        let autoLogoutInProgress = false;
+        let isSyncingPendingHistory = false;
         const CARD_WIDTH_PX = 638;
         const CARD_HEIGHT_PX = 1011;
 
@@ -858,7 +990,9 @@
 
         // --- Data Logic ---
 // API Configuration
-        const API_BASE_URL = 'http://localhost:3001/api';
+        const API_BASE_URL = location.hostname === 'localhost'
+            ? 'http://localhost:3001/api'
+            : '/api';
 
         // Async function to fetch volunteers from database
         async function fetchVolunteersFromAPI() {
@@ -895,14 +1029,58 @@
             }
         }
 
+        async function updateVolunteerToAPI(id, volunteer) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/volunteers/${encodeURIComponent(id)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(volunteer)
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Error updating volunteer:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        async function deleteVolunteerFromAPI(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/volunteers/${encodeURIComponent(id)}`, {
+                    method: 'DELETE'
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Error deleting volunteer:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        async function bulkImportVolunteersToAPI(volunteers) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/volunteers/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ volunteers })
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Error bulk importing volunteers:', err);
+                return { ok: false, error: err.message };
+            }
+        }
+
         // Async function to fetch history from database
         async function fetchHistoryFromAPI() {
             try {
                 const response = await fetch(`${API_BASE_URL}/history`);
                 const result = await response.json();
                 if (result.ok) {
-                    localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(result.data));
-                    return result.data;
+                    const normalized = (result.data || []).map(item => ({
+                        ...item,
+                        volunteerId: item.volunteerId || item.volunteer_id || ''
+                    }));
+                    localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(normalized));
+                    return normalized;
                 }
                 return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]');
             } catch (err) {
@@ -945,12 +1123,55 @@
         function getVolunteers() { return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]'); }
         function saveVolunteers(data) { localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(data)); }
         function getHistory() { return JSON.parse(localStorage.getItem(DB_KEY_HISTORY) || '[]'); }
-        function addToHistory(record) {
+        function getPendingHistoryQueue() { return JSON.parse(localStorage.getItem(DB_KEY_PENDING_HISTORY) || '[]'); }
+        function savePendingHistoryQueue(data) { localStorage.setItem(DB_KEY_PENDING_HISTORY, JSON.stringify(data)); }
+
+        function queueHistoryForRetry(record) {
+            const queue = getPendingHistoryQueue();
+            queue.push(record);
+            savePendingHistoryQueue(queue);
+        }
+
+        async function processPendingHistoryQueue() {
+            if (isSyncingPendingHistory) return;
+            if (!navigator.onLine) return;
+
+            const queue = getPendingHistoryQueue();
+            if (queue.length === 0) return;
+
+            isSyncingPendingHistory = true;
+            const remaining = [];
+
+            for (const record of queue) {
+                const result = await addHistoryToAPI(record);
+                if (!result.ok) {
+                    remaining.push(record);
+                    if (String(result.error || '').toLowerCase().includes('network')) {
+                        break;
+                    }
+                }
+            }
+
+            savePendingHistoryQueue(remaining);
+            isSyncingPendingHistory = false;
+
+            if (remaining.length === 0) {
+                Toast.fire({ icon: 'success', title: 'Riwayat offline berhasil di-sync' });
+            }
+        }
+
+        async function addToHistory(record) {
             const history = getHistory();
             history.unshift(record);
             localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(history));
-            // Also save to API
-            addHistoryToAPI(record);
+            const apiResult = await addHistoryToAPI(record);
+            if (!apiResult.ok) {
+                queueHistoryForRetry(record);
+                Toast.fire({ icon: 'warning', title: 'Riwayat disimpan lokal, menunggu sync online' });
+                return false;
+            }
+            await processPendingHistoryQueue();
+            return true;
         }
 
         function getInitials(name) {
@@ -978,6 +1199,7 @@
             return `${p1}${randomPart}${p3}`;
         }
         function updateIdPreview() {
+            if (document.getElementById('vol-index').value !== '-1') return;
             const role = document.getElementById('vol-role').value;
             const locker = document.getElementById('vol-locker').value;
             const randomPart = document.getElementById('vol-random-part').value;
@@ -999,7 +1221,7 @@
             // First, try to get latest history from API
             await fetchHistoryFromAPI();
             const history = getHistory();
-            const userHistory = history.filter(h => h.volunteerId === userId);
+            const userHistory = history.filter(h => (h.volunteerId || h.volunteer_id) === userId);
             if (userHistory.length === 0) return 'Masuk';
             const lastStatus = userHistory[0].status;
             if (lastStatus === 'Masuk') return 'Pulang';
@@ -1009,22 +1231,81 @@
         // Sync version for backward compatibility
         function determineNextStatus(userId) {
             const history = getHistory();
-            const userHistory = history.filter(h => h.volunteerId === userId);
+            const userHistory = history.filter(h => (h.volunteerId || h.volunteer_id) === userId);
             if (userHistory.length === 0) return 'Masuk';
             const lastStatus = userHistory[0].status;
             if (lastStatus === 'Masuk') return 'Pulang';
             return 'Masuk';
         }
 
+        function isAuthenticated() {
+            return localStorage.getItem(SESSION_KEY) === 'active';
+        }
+
+        function stopInactivityTracking() {
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = null;
+            }
+            if (!inactivityTrackingBound) return;
+
+            const events = ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+            events.forEach(eventName => window.removeEventListener(eventName, resetInactivityTimer));
+            document.removeEventListener('visibilitychange', onVisibilityActive);
+            inactivityTrackingBound = false;
+        }
+
+        function onVisibilityActive() {
+            if (document.visibilityState === 'visible') {
+                resetInactivityTimer();
+            }
+        }
+
+        function startInactivityTracking() {
+            if (inactivityTrackingBound) return;
+            const events = ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+            events.forEach(eventName => window.addEventListener(eventName, resetInactivityTimer, { passive: true }));
+            document.addEventListener('visibilitychange', onVisibilityActive);
+            inactivityTrackingBound = true;
+        }
+
+        function performAutoLogout() {
+            if (autoLogoutInProgress || !isAuthenticated()) return;
+            autoLogoutInProgress = true;
+            stopScanner();
+            stopInactivityTracking();
+            localStorage.removeItem(SESSION_KEY);
+            localStorage.removeItem('user_data');
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Sesi Berakhir',
+                text: 'Tidak ada aktivitas terlalu lama. Silakan login kembali.',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                autoLogoutInProgress = false;
+                location.reload();
+            });
+        }
+
+        function resetInactivityTimer() {
+            if (!isAuthenticated() || autoLogoutInProgress) return;
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(performAutoLogout, INACTIVITY_TIMEOUT_MS);
+        }
+
         // --- Auth ---
         function checkAuth() {
-            if (localStorage.getItem(SESSION_KEY) === 'active') {
+            if (isAuthenticated()) {
                 document.getElementById('login-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
+                startInactivityTracking();
+                resetInactivityTimer();
                 initApp();
             } else {
                 document.getElementById('login-page').classList.remove('hidden');
                 document.getElementById('main-app').classList.add('hidden');
+                stopInactivityTracking();
             }
         }
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1063,6 +1344,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             }).then((result) => {
                 if (result.isConfirmed) {
                     localStorage.removeItem(SESSION_KEY);
+                    localStorage.removeItem('user_data');
+                    stopInactivityTracking();
                     stopScanner();
                     location.reload();
                 }
@@ -1190,7 +1473,7 @@ async function onScanSuccess(text) {
                 }
 
                 localStorage.setItem(lastScanKey, nowTime.toString());
-                addToHistory({ 
+                await addToHistory({ 
                     timestamp: now.toISOString(), 
                     volunteerId: v.id, 
                     name: v.name, 
@@ -1350,7 +1633,6 @@ showScanSuccessOverlay(v, nextStatus, now);
             document.getElementById('vol-photo-base64').value = '';
             document.getElementById('preview-img').classList.add('hidden');
             document.getElementById('vol-role').removeEventListener('input', updateIdPreview);
-            document.getElementById('vol-role').addEventListener('input', updateIdPreview);
 
             if (index !== null) {
                 const v = getVolunteers()[index];
@@ -1368,6 +1650,7 @@ showScanSuccessOverlay(v, nextStatus, now);
                 document.getElementById('vol-id').value = v.id;
             } else {
                 document.getElementById('vol-index').value = "-1";
+                document.getElementById('vol-role').addEventListener('input', updateIdPreview);
                 document.getElementById('vol-locker').value = '';
                 document.getElementById('vol-random-part').value = generateRandomPart();
                 updateIdPreview();
@@ -1390,7 +1673,7 @@ showScanSuccessOverlay(v, nextStatus, now);
             }
         }
 
-        document.getElementById('volunteer-form').addEventListener('submit', e => {
+        document.getElementById('volunteer-form').addEventListener('submit', async e => {
             e.preventDefault();
             const index = parseInt(document.getElementById('vol-index').value);
             const id = document.getElementById('vol-id').value;
@@ -1405,22 +1688,46 @@ showScanSuccessOverlay(v, nextStatus, now);
             }
 
             let volunteers = getVolunteers();
+            const existingVolunteer = index >= 0 ? volunteers[index] : null;
+            const stableId = existingVolunteer ? existingVolunteer.id : id;
+
+            const payload = {
+                id: stableId,
+                name,
+                role,
+                locker: locker || '',
+                photo,
+                qr_code_data: stableId,
+                card_number: stableId
+            };
 
             if (index === -1) {
-                if (volunteers.some(v => v.id === id)) { Toast.fire({ icon: 'error', title: 'ID Sistem error' }); return; }
-                volunteers.push({ id, name, role, locker: locker || '', photo });
-                Toast.fire({ icon: 'success', title: 'Relawan berhasil ditambahkan' });
+                if (volunteers.some(v => v.id === stableId)) { Toast.fire({ icon: 'error', title: 'ID Sistem error' }); return; }
+                const apiResult = await saveVolunteerToAPI(payload);
+                if (apiResult.ok) {
+                    await fetchVolunteersFromAPI();
+                    Toast.fire({ icon: 'success', title: 'Relawan berhasil ditambahkan' });
+                } else {
+                    Toast.fire({ icon: 'error', title: apiResult.error || 'Gagal simpan ke database online' });
+                    return;
+                }
             } else {
-                volunteers[index] = { id, name, role, locker: locker || '', photo };
-                Toast.fire({ icon: 'success', title: 'Data relawan diperbarui' });
+                const apiResult = await updateVolunteerToAPI(stableId, payload);
+                if (apiResult.ok) {
+                    await fetchVolunteersFromAPI();
+                    Toast.fire({ icon: 'success', title: 'Data relawan diperbarui' });
+                } else {
+                    Toast.fire({ icon: 'error', title: apiResult.error || 'Gagal update ke database online' });
+                    return;
+                }
             }
-            saveVolunteers(volunteers);
+
             closeVolunteerModal();
             renderVolunteers();
         });
 
         function editVolunteer(i) { openVolunteerModal(i); }
-        function deleteVolunteer(i) {
+        async function deleteVolunteer(i) {
             Swal.fire({
                 title: 'Hapus data ini?',
                 text: "Data yang dihapus tidak dapat dikembalikan!",
@@ -1429,13 +1736,20 @@ showScanSuccessOverlay(v, nextStatus, now);
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Ya, Hapus!'
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
-                    let v = getVolunteers(); 
-                    v.splice(i, 1); 
-                    saveVolunteers(v); 
-                    renderVolunteers(); 
-                    Toast.fire({ icon: 'success', title: 'Data dihapus' });
+                    let v = getVolunteers();
+                    const target = v[i];
+                    const apiResult = target ? await deleteVolunteerFromAPI(target.id) : { ok: false };
+
+                    if (apiResult.ok) {
+                        await fetchVolunteersFromAPI();
+                        renderVolunteers();
+                        Toast.fire({ icon: 'success', title: 'Data dihapus' });
+                        return;
+                    }
+
+                    Toast.fire({ icon: 'error', title: apiResult.error || 'Gagal hapus di database online' });
                 }
             })
         }
@@ -1451,7 +1765,7 @@ showScanSuccessOverlay(v, nextStatus, now);
                 const statusColor = h.status === 'Masuk' ? 'var(--success)' : 'var(--danger)';
                 tr.innerHTML = `
                     <td>${d.toLocaleString('id-ID')}</td>
-                    <td>${h.volunteerId}</td>
+                    <td>${h.volunteerId || h.volunteer_id || '-'}</td>
                     <td>${h.name}</td>
                     <td>${h.role}</td>
                     <td><span style="color:${statusColor}; font-weight:bold;">${h.status}</span></td>
@@ -1580,7 +1894,7 @@ showScanSuccessOverlay(v, nextStatus, now);
                 tr.innerHTML = `
                     <td>${d.toLocaleDateString('id-ID')}</td>
                     <td>${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td style="display:flex; align-items:center; gap:10px;">${avatarHtml} <div><div style="font-weight:600;">${h.name}</div><div style="font-size:0.8rem; color:#9ca3af;">${h.volunteerId}</div></div></td>
+                    <td style="display:flex; align-items:center; gap:10px;">${avatarHtml} <div><div style="font-weight:600;">${h.name}</div><div style="font-size:0.8rem; color:#9ca3af;">${h.volunteerId || h.volunteer_id || '-'}</div></div></td>
                     <td>${h.role}</td>
                     <td><span style="background:${statusColor}; color:white; padding:4px 8px; border-radius:6px; font-size:0.8rem; font-weight:bold;">${h.status || '-'}</span></td>
                 `;
@@ -1590,7 +1904,7 @@ showScanSuccessOverlay(v, nextStatus, now);
         function exportHistoryToExcel() {
             const data = getHistory().map(h => ({ 
                 Waktu: new Date(h.timestamp).toLocaleString(), 
-                ID: h.volunteerId, 
+                ID: h.volunteerId || h.volunteer_id || '', 
                 Nama: h.name, 
                 Jabatan: h.role, 
                 Loker: h.locker, 
@@ -1614,15 +1928,15 @@ showScanSuccessOverlay(v, nextStatus, now);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Template");
             XLSX.writeFile(wb, "Template.xlsx");
         }
-        function importVolunteersFromExcel(input) {
+        async function importVolunteersFromExcel(input) {
             const f = input.files[0]; if(!f) return;
             const r = new FileReader();
-            r.onload = e => {
+            r.onload = async e => {
                 const wb = XLSX.read(e.target.result, {type:'array'});
                 const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                let v = getVolunteers();
-                let count = 0;
-                json.forEach(row => {
+                const payloads = [];
+                const existingLockers = new Set(getVolunteers().map(x => (x.locker || '').toString()).filter(Boolean));
+                for (const row of json) {
                     const name = row['Nama'];
                     const role = row['Jabatan'];
                     const locker = row['Loker'] ? row['Loker'].toString() : '';
@@ -1630,13 +1944,44 @@ showScanSuccessOverlay(v, nextStatus, now);
                         const rPart = generateRandomPart();
                         const lPart = generateLockerPart(locker);
                         const id = `${generateRolePart(role)}${rPart}${lPart}`;
-                        if (!locker || !isLockerTaken(locker)) {
-                            v.push({ id, name, role, locker, photo: "" });
-                            count++;
+                        const lockerAvailable = !locker || (!isLockerTaken(locker) && !existingLockers.has(locker));
+                        if (lockerAvailable) {
+                            payloads.push({
+                                id,
+                                name,
+                                role,
+                                locker,
+                                photo: "",
+                                qr_code_data: id,
+                                card_number: id
+                            });
+                            if (locker) existingLockers.add(locker);
                         }
                     }
-                });
-                saveVolunteers(v); renderVolunteers(); Toast.fire({ icon: 'success', title: `${count} data diimport` }); input.value='';
+                }
+
+                if (payloads.length === 0) {
+                    Toast.fire({ icon: 'warning', title: 'Tidak ada data valid untuk diimport' });
+                    input.value='';
+                    return;
+                }
+
+                const apiResult = await bulkImportVolunteersToAPI(payloads);
+                if (!apiResult.ok) {
+                    Toast.fire({ icon: 'error', title: apiResult.error || 'Gagal import batch ke database' });
+                    input.value='';
+                    return;
+                }
+
+                await fetchVolunteersFromAPI();
+                renderVolunteers();
+                const upserted = apiResult.upserted || 0;
+                const failed = apiResult.failed || 0;
+                const title = failed > 0
+                    ? `Import selesai: ${upserted} sukses, ${failed} gagal`
+                    : `Import berhasil: ${upserted} data`;
+                Toast.fire({ icon: failed > 0 ? 'warning' : 'success', title });
+                input.value='';
             };
             r.readAsArrayBuffer(f);
         }
@@ -1889,9 +2234,14 @@ showScanSuccessOverlay(v, nextStatus, now);
             // Fetch data from API first, then render
             await fetchVolunteersFromAPI();
             await fetchHistoryFromAPI();
+            await processPendingHistoryQueue();
             renderVolunteers();
             navigateTo('scanner');
         }
+
+        window.addEventListener('online', () => {
+            processPendingHistoryQueue();
+        });
 
         checkAuth();
     </script>

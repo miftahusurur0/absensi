@@ -26,10 +26,11 @@ POSTGRES_PRISMA_URL=postgresql://user:password@host/dbname
 ```
 
 ### 3. Initialize Database
-Run schema migration:
+Run schema initialization and compatibility migration:
 
 ```bash
 npm run db:init
+npm run db:fix
 ```
 
 Output yang diharapkan:
@@ -61,7 +62,7 @@ Seharusnya tampil:
 ### Volunteers Table
 ```sql
 CREATE TABLE volunteers (
-  id SERIAL PRIMARY KEY,
+  id VARCHAR(50) PRIMARY KEY,     -- contoh: STA0180
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255),
   phone VARCHAR(20),
@@ -80,7 +81,7 @@ CREATE TABLE volunteers (
 ```sql
 CREATE TABLE history (
   id SERIAL PRIMARY KEY,
-  volunteer_id INTEGER REFERENCES volunteers(id) ON DELETE CASCADE,
+  volunteer_id VARCHAR(50),       -- sama dengan volunteers.id
   name VARCHAR(255),
   role VARCHAR(100),
   locker VARCHAR(50),
@@ -100,6 +101,7 @@ CREATE TABLE history (
 curl -X POST http://localhost:3001/api/volunteers \
   -H "Content-Type: application/json" \
   -d '{
+    "id": "STA0180",
     "name": "John Doe",
     "email": "john@example.com",
     "phone": "08123456789",
@@ -117,7 +119,7 @@ Response:
 {
   "ok": true,
   "message": "Volunteer created successfully",
-  "data": { "id": 1, "name": "John Doe", ... }
+  "data": { "id": "STA0180", "name": "John Doe", ... }
 }
 ```
 
@@ -128,19 +130,19 @@ GET http://localhost:3001/api/volunteers
 
 #### Get Specific Volunteer
 ```bash
-GET http://localhost:3001/api/volunteers/1
+GET http://localhost:3001/api/volunteers/STA0180
 ```
 
 #### Update Volunteer
 ```bash
-curl -X PUT http://localhost:3001/api/volunteers/1 \
+curl -X PUT http://localhost:3001/api/volunteers/STA0180 \
   -H "Content-Type: application/json" \
   -d '{ "status": "inactive" }'
 ```
 
 #### Delete Volunteer
 ```bash
-DELETE http://localhost:3001/api/volunteers/1
+DELETE http://localhost:3001/api/volunteers/STA0180
 ```
 
 ### Attendance History
@@ -150,7 +152,7 @@ DELETE http://localhost:3001/api/volunteers/1
 curl -X POST http://localhost:3001/api/history \
   -H "Content-Type: application/json" \
   -d '{
-    "volunteerId": 1,
+    "volunteerId": "STA0180",
     "name": "John Doe",
     "role": "Koordinator",
     "locker": "A-01",
