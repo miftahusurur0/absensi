@@ -217,26 +217,41 @@ app.post('/api/history', async (req, res) => {
 // Add/Create Volunteer (Neon)
 app.post('/api/volunteers', async (req, res) => {
   try {
-    let { id, name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
-
-    // Validate required fields
-    if (!id || !name || id === 'null' || id === 'undefined' || name === 'null' || name === 'undefined') {
-      return res.status(400).json({ ok: false, error: 'id and name are required and must be valid' });
+    // Validate request body exists
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ ok: false, error: 'Data tidak valid' });
     }
 
-    // Ensure id is a string and clean
+    let { id, name, email, phone, role, locker, qr_code_data, card_number, photo, status } = req.body;
+
+    // Validate required fields - must be strings and not empty
+    if (!id || !name) {
+      return res.status(400).json({ ok: false, error: 'ID dan Nama wajib diisi' });
+    }
+
+    // Ensure id and name are valid strings
+    if (typeof id !== 'string' || typeof name !== 'string') {
+      return res.status(400).json({ ok: false, error: 'ID dan Nama harus berupa teks' });
+    }
+
+    // Clean id and name
     id = String(id).trim();
     name = String(name).trim();
+
+    // Validate not empty after trim
+    if (!id || !name) {
+      return res.status(400).json({ ok: false, error: 'ID dan Nama tidak boleh kosong' });
+    }
     
     // Sanitize optional fields - convert undefined/empty string to null
-    email = (email && email !== 'null' && email !== 'undefined') ? String(email).trim() : null;
-    phone = (phone && phone !== 'null' && phone !== 'undefined') ? String(phone).trim() : null;
-    role = (role && role !== 'null' && role !== 'undefined') ? String(role).trim() : null;
-    locker = (locker && locker !== 'null' && locker !== 'undefined') ? String(locker).trim() : null;
-    qr_code_data = (qr_code_data && qr_code_data !== 'null' && qr_code_data !== 'undefined') ? String(qr_code_data).trim() : null;
-    card_number = (card_number && card_number !== 'null' && card_number !== 'undefined') ? String(card_number).trim() : null;
-    photo = (photo && photo !== 'null' && photo !== 'undefined') ? String(photo).trim() : null;
-    status = (status && status !== 'null' && status !== 'undefined') ? String(status).trim() : 'active';
+    email = (email && typeof email === 'string' && email.trim() !== 'null' && email.trim() !== 'undefined' && email.trim() !== '') ? email.trim() : null;
+    phone = (phone && typeof phone === 'string' && phone.trim() !== 'null' && phone.trim() !== 'undefined' && phone.trim() !== '') ? phone.trim() : null;
+    role = (role && typeof role === 'string' && role.trim() !== 'null' && role.trim() !== 'undefined' && role.trim() !== '') ? role.trim() : null;
+    locker = (locker && typeof locker === 'string' && locker.trim() !== 'null' && locker.trim() !== 'undefined' && locker.trim() !== '') ? locker.trim() : null;
+    qr_code_data = (qr_code_data && typeof qr_code_data === 'string' && qr_code_data.trim() !== 'null' && qr_code_data.trim() !== 'undefined' && qr_code_data.trim() !== '') ? qr_code_data.trim() : null;
+    card_number = (card_number && typeof card_number === 'string' && card_number.trim() !== 'null' && card_number.trim() !== 'undefined' && card_number.trim() !== '') ? card_number.trim() : null;
+    photo = (photo && typeof photo === 'string' && photo.trim() !== 'null' && photo.trim() !== 'undefined' && photo.trim() !== '') ? photo.trim() : null;
+    status = (status && typeof status === 'string' && status.trim() !== 'null' && status.trim() !== 'undefined' && status.trim() !== '') ? status.trim() : 'active';
 
     // Validate id length (max 50 chars for VARCHAR(50))
     if (id.length > 50) {
@@ -254,6 +269,11 @@ app.post('/api/volunteers', async (req, res) => {
       RETURNING *;
     `;
 
+    // Ensure we always return valid JSON
+    if (!result || result.length === 0) {
+      return res.status(500).json({ ok: false, error: 'Gagal menyimpan data' });
+    }
+
     res.json({ ok: true, message: 'Volunteer created successfully', data: result[0] });
   } catch (err) {
     console.error('Error creating volunteer:', err);
@@ -263,7 +283,10 @@ app.post('/api/volunteers', async (req, res) => {
     if (err.message.includes('invalid input syntax')) {
       return res.status(400).json({ ok: false, error: 'Format data tidak valid. Periksa kembali input Anda.' });
     }
-    res.status(500).json({ ok: false, error: err.message });
+    if (err.message.includes('null')) {
+      return res.status(400).json({ ok: false, error: 'Data tidak valid. Pastikan semua field terisi dengan benar.' });
+    }
+    res.status(500).json({ ok: false, error: 'Terjadi kesalahan pada server' });
   }
 });
 
