@@ -990,15 +990,66 @@
 
         // --- Data Logic ---
 // API Configuration
-        const API_BASE_URL = location.hostname === 'localhost'
-            ? 'http://localhost:3001/api'
-            : '/api';
+        const API_BASE_URL = (() => {
+            const isFileProtocol = location.protocol === 'file:';
+            const currentHost = location.hostname || 'localhost';
+            const currentPort = location.port;
+
+            if (isFileProtocol) {
+                return 'http://localhost:3001/api';
+            }
+
+            // If UI is served from a dev/static port (e.g. 5500), target API server at :3001 on same host.
+            if (currentPort && currentPort !== '3001') {
+                return `${location.protocol}//${currentHost}:3001/api`;
+            }
+
+            // If frontend is served by the same Express app (or deployed with /api routing), use relative path.
+            return '/api';
+        })();
+
+        function toApiUrl(path) {
+            const normalized = path.startsWith('/') ? path : `/${path}`;
+            return `${API_BASE_URL}${normalized}`;
+        }
+
+        function apiNetworkError(err) {
+            const isFetchError = err && String(err.message || '').toLowerCase().includes('failed to fetch');
+            return {
+                ok: false,
+                error: isFetchError
+                    ? `Tidak bisa terhubung ke server API (${API_BASE_URL}). Pastikan backend aktif.`
+                    : (err?.message || 'Koneksi API gagal')
+            };
+        }
+
+        async function parseApiResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const isJson = contentType.includes('application/json');
+
+            if (isJson) {
+                const data = await response.json();
+                if (!response.ok && data && typeof data === 'object' && data.ok === undefined) {
+                    data.ok = false;
+                }
+                return data;
+            }
+
+            const text = await response.text();
+            if (response.ok) {
+                return { ok: true, data: text };
+            }
+            return {
+                ok: false,
+                error: text || `HTTP ${response.status} ${response.statusText}`
+            };
+        }
 
         // Async function to fetch volunteers from database
         async function fetchVolunteersFromAPI() {
             try {
-                const response = await fetch(`${API_BASE_URL}/volunteers`);
-                const result = await response.json();
+                const response = await fetch(toApiUrl('/volunteers'));
+                const result = await parseApiResponse(response);
                 if (result.ok) {
                     localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(result.data));
                     return result.data;
@@ -1013,67 +1064,67 @@
         // Async function to save volunteer to database
         async function saveVolunteerToAPI(volunteer) {
             try {
-                const response = await fetch(`${API_BASE_URL}/volunteers`, {
+                const response = await fetch(toApiUrl('/volunteers'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(volunteer)
                 });
-                const result = await response.json();
+                const result = await parseApiResponse(response);
                 if (result.ok) {
                     await fetchVolunteersFromAPI();
                 }
                 return result;
             } catch (err) {
                 console.error('Error saving volunteer:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
 
         async function updateVolunteerToAPI(id, volunteer) {
             try {
-                const response = await fetch(`${API_BASE_URL}/volunteers/${encodeURIComponent(id)}`, {
+                const response = await fetch(toApiUrl(`/volunteers/${encodeURIComponent(id)}`), {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(volunteer)
                 });
-                return await response.json();
+                return await parseApiResponse(response);
             } catch (err) {
                 console.error('Error updating volunteer:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
 
         async function deleteVolunteerFromAPI(id) {
             try {
-                const response = await fetch(`${API_BASE_URL}/volunteers/${encodeURIComponent(id)}`, {
+                const response = await fetch(toApiUrl(`/volunteers/${encodeURIComponent(id)}`), {
                     method: 'DELETE'
                 });
-                return await response.json();
+                return await parseApiResponse(response);
             } catch (err) {
                 console.error('Error deleting volunteer:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
 
         async function bulkImportVolunteersToAPI(volunteers) {
             try {
-                const response = await fetch(`${API_BASE_URL}/volunteers/bulk`, {
+                const response = await fetch(toApiUrl('/volunteers/bulk'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ volunteers })
                 });
-                return await response.json();
+                return await parseApiResponse(response);
             } catch (err) {
                 console.error('Error bulk importing volunteers:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
 
         // Async function to fetch history from database
         async function fetchHistoryFromAPI() {
             try {
-                const response = await fetch(`${API_BASE_URL}/history`);
-                const result = await response.json();
+                const response = await fetch(toApiUrl('/history'));
+                const result = await parseApiResponse(response);
                 if (result.ok) {
                     const normalized = (result.data || []).map(item => ({
                         ...item,
@@ -1092,33 +1143,32 @@
         // Async function to add history to database
         async function addHistoryToAPI(record) {
             try {
-                const response = await fetch(`${API_BASE_URL}/history`, {
+                const response = await fetch(toApiUrl('/history'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(record)
                 });
-                return await response.json();
+                return await parseApiResponse(response);
             } catch (err) {
                 console.error('Error adding history:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
 
         // Login API function
         async function loginToAPI(username, password) {
             try {
-                const response = await fetch(`${API_BASE_URL}/login`, {
+                const response = await fetch(toApiUrl('/login'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
-                return await response.json();
+                return await parseApiResponse(response);
             } catch (err) {
                 console.error('Error logging in:', err);
-                return { ok: false, error: err.message };
+                return apiNetworkError(err);
             }
         }
-
         // Keep localStorage functions as fallback
         function getVolunteers() { return JSON.parse(localStorage.getItem(DB_KEY_VOLUNTEERS) || '[]'); }
         function saveVolunteers(data) { localStorage.setItem(DB_KEY_VOLUNTEERS, JSON.stringify(data)); }
